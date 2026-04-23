@@ -1915,6 +1915,10 @@
           document.querySelectorAll(".tabPanel").forEach((panel) => panel.classList.add("hidden"));
           el(`tab-${tab}`).classList.remove("hidden");
           if (tab === "history") renderHistory();
+
+          // 避免「话术匹配」页面出现双按钮：底部快捷入口只在结果页展示
+          const $cta = el("followupBottomBar");
+          if ($cta && tab === "match") $cta.classList.add("hidden");
         }
 
         function initTabs() {
