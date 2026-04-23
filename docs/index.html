@@ -825,7 +825,7 @@
           <div id="judgeFormCard" class="rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
             <div class="flex items-center justify-between gap-3">
               <div class="text-sm font-semibold">客人 MBTI 判断</div>
-              <div class="text-xs text-ink-200/80">8 题快速判断</div>
+              <div class="text-xs text-ink-200/80">6 题快速判断</div>
             </div>
             <div class="mt-4 space-y-4">
               <div id="judgeQuestions" class="space-y-4"></div>
@@ -867,6 +867,7 @@
                 <div class="min-w-0">
                   <div class="text-xs text-ink-200/80">客人 MBTI</div>
                   <div id="guestTypeText" class="mt-1 text-4xl font-semibold tracking-widest"></div>
+                  <div id="guestConfidenceText" class="mt-2 text-xs text-ink-200/80"></div>
                 </div>
                 <button
                   id="btnCopyGuestType"
@@ -1319,75 +1320,165 @@
 
         const questions = [
           {
-            id: "Q1",
-            dimension: "EI",
-            prompt: "当客人进店，面对你的打招呼时，他的反应是？",
+            id: 1,
+            text: "进店后的空间行为",
+            description: "客人进入店铺后，您观察到她/他：",
             options: [
-              { id: "A", label: "眼神轻快交汇，微笑点头或主动开启寒暄", value: "E" },
-              { id: "B", label: "视线快速移开，低头看柜台，或仅礼貌性轻声回应", value: "I" },
+              {
+                label: "A",
+                text: "径直走向目标展柜（如钻石区/彩宝区），目的明确",
+                scores: { E: 0, I: 2, S: 1, N: 0, T: 1, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "B",
+                text: "缓步浏览，目光在多个展柜间游走，偶尔驻足",
+                scores: { E: 1, I: 1, S: 0, N: 2, T: 0, F: 1, J: 0, P: 2 },
+              },
+              {
+                label: "C",
+                text: "先环顾店铺整体环境、灯光、陈列布局，再走近展柜",
+                scores: { E: 0, I: 2, S: 0, N: 2, T: 0, F: 0, J: 1, P: 1 },
+              },
+              {
+                label: "D",
+                text: "站在门口附近，等待顾问主动上前引导",
+                scores: { E: 0, I: 2, S: 1, N: 0, T: 0, F: 1, J: 0, P: 2 },
+              },
             ],
           },
           {
-            id: "Q2",
-            dimension: "SN",
-            prompt: "在浏览柜台时，客人的视线更多停留在哪里？",
+            id: 2,
+            text: "对顾问问候的反应",
+            description: "您问候后，客人：",
             options: [
-              { id: "A", label: "铭牌上的价格、克拉数、成色等具体参数", value: "S" },
-              { id: "B", label: "橱窗的陈列美感、明星画报或产品的整体氛围", value: "N" },
+              {
+                label: "A",
+                text: "直接回答具体需求，如“我想看婚戒/某品牌系列”",
+                scores: { E: 2, I: 0, S: 2, N: 0, T: 1, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "B",
+                text: "微笑说“我先看看”，但眼神仍在寻找交流机会",
+                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "C",
+                text: "简短回应“看看”，随即低头专注看展柜，不延伸话题",
+                scores: { E: 0, I: 2, S: 2, N: 0, T: 1, F: 0, J: 1, P: 1 },
+              },
+              {
+                label: "D",
+                text: "反问“你们有什么推荐？最近有什么新款？”",
+                scores: { E: 2, I: 0, S: 0, N: 2, T: 0, F: 1, J: 0, P: 2 },
+              },
             ],
           },
           {
-            id: "Q3",
-            dimension: "SN",
-            prompt: "当客人指向某款珠宝时，他开口询问的第一个问题通常是？",
+            id: 3,
+            text: "试戴时的互动方式",
+            description: "当顾问取出珠宝请客人试戴时：",
             options: [
-              { id: "A", label: "“这款还有现货吗 / 什么材质 / 多长？”", value: "S" },
-              { id: "B", label: "“这个系列有什么寓意 / 设计灵感是什么？”", value: "N" },
+              {
+                label: "A",
+                text: "立刻试戴，边戴边问“这个适合我吗？你觉得呢？”",
+                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "B",
+                text: "先仔细观察工艺、镶嵌、背面细节，再决定是否试戴",
+                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "C",
+                text: "试戴后立刻掏出手机自拍，或拍照发给朋友",
+                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "D",
+                text: "试戴后站在镜前静止观察许久，表情内敛，很少主动评价",
+                scores: { E: 0, I: 2, S: 1, N: 1, T: 1, F: 1, J: 1, P: 1 },
+              },
             ],
           },
           {
-            id: "Q4",
-            dimension: "EI",
-            prompt: "在你尝试寻找话题（如赞美天气或对方穿搭）时，客人的互动感如何？",
+            id: 4,
+            text: "对珠宝细节的关注点",
+            description: "客人在看货时，反复询问或查看的是：",
             options: [
-              { id: "A", label: "愿意分享自己的生活细节或行程，互动自然", value: "E" },
-              { id: "B", label: "反应平淡，仅维持基本礼貌，更希望回到产品本身", value: "I" },
+              {
+                label: "A",
+                text: "价格、折扣、保养政策、售后条款",
+                scores: { E: 0, I: 1, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "B",
+                text: "设计灵感、宝石产地故事、品牌历史、佩戴场合建议",
+                scores: { E: 1, I: 1, S: 0, N: 2, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "C",
+                text: "4C参数、证书编号、金属纯度、工艺技术细节",
+                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "D",
+                text: "是否限量、是否有人佩戴过、是否容易撞款",
+                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 1, P: 1 },
+              },
             ],
           },
           {
-            id: "Q5",
-            dimension: "TF",
-            prompt: "试戴过程中，客人评价这款珠宝好不好的标准更像是？",
+            id: 5,
+            text: "做决策时的状态",
+            description: "当客人在两件珠宝之间犹豫时：",
             options: [
-              { id: "A", label: "评估保值性、切工技术、或横向对比其他品牌", value: "T" },
-              { id: "B", label: "描述戴上后的“心动感”、自信提升或纪念意义", value: "F" },
+              {
+                label: "A",
+                text: "主动征求您的意见：“如果是你，会选哪个？”",
+                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "B",
+                text: "拿出手机列对比清单，或反复翻看参数卡片",
+                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "C",
+                text: "闭眼想象佩戴场景，或问“哪条更能提升气场？”",
+                scores: { E: 0, I: 1, S: 0, N: 2, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "D",
+                text: "说“我再想想”，退后一步沉默观察，不急于决定",
+                scores: { E: 0, I: 2, S: 1, N: 1, T: 1, F: 0, J: 0, P: 2 },
+              },
             ],
           },
           {
-            id: "Q6",
-            dimension: "TF",
-            prompt: "当你真诚赞美客人佩戴效果很好时，他的反馈是？",
+            id: 6,
+            text: "离店前的行为信号",
+            description: "接待结束时，客人：",
             options: [
-              { id: "A", label: "冷静理智，更希望听你从专业角度解释为什么好", value: "T" },
-              { id: "B", label: "明显感受到被赞美的愉悦，甚至会开心地照镜子", value: "F" },
-            ],
-          },
-          {
-            id: "Q7",
-            dimension: "JP",
-            prompt: "观察客人在店内的移动路线，哪种更符合？",
-            options: [
-              { id: "A", label: "目标明确，直奔某个柜台，不怎么被其他东西分心", value: "J" },
-              { id: "B", label: "随意漫游，被不同的闪光点吸引，走走停停", value: "P" },
-            ],
-          },
-          {
-            id: "Q8",
-            dimension: "JP",
-            prompt: "到了决策临界点，客人的表现出的节奏感是？",
-            options: [
-              { id: "A", label: "决策干脆，一旦确认就希望立刻走包装结账流程", value: "J" },
-              { id: "B", label: "临门一脚时仍想多对比一下，怕错过更好的选择", value: "P" },
+              {
+                label: "A",
+                text: "主动加微信/要名片，说“回去考虑，有活动通知我”",
+                scores: { E: 2, I: 0, S: 1, N: 1, T: 1, F: 1, J: 1, P: 1 },
+              },
+              {
+                label: "B",
+                text: "仔细收好证书、包装，确认保修卡后平静离开",
+                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
+              {
+                label: "C",
+                text: "临出门前又折返再看一眼某件珠宝，流露不舍",
+                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
+              },
+              {
+                label: "D",
+                text: "直接问“现在买有什么赠品？能否今天预留？”",
+                scores: { E: 2, I: 0, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
+              },
             ],
           },
         ];
@@ -1405,8 +1496,9 @@
             title.className = "flex items-start justify-between gap-3";
             title.innerHTML = `
               <div class="min-w-0">
-                <div class="text-xs font-semibold text-jade-700">${q.id} · ${q.dimension}</div>
-                <div class="mt-1 text-sm font-semibold text-ink-50">${q.prompt}</div>
+                <div class="text-xs font-semibold text-jade-700">第 ${idx + 1} 题</div>
+                <div class="mt-1 text-sm font-semibold text-ink-50">${q.text}</div>
+                <div class="mt-1 text-xs text-ink-200/80">${q.description || ""}</div>
               </div>
             `;
 
@@ -1418,9 +1510,9 @@
               label.className =
                 "flex cursor-pointer items-start gap-3 rounded-xl border border-ink-700/60 bg-ink-900/20 p-3 hover:bg-ink-900/30";
               label.innerHTML = `
-                <input class="mt-1 accent-jade-400" type="radio" name="q_${q.id}" value="${opt.value}" />
+                <input class="mt-1 accent-jade-400" type="radio" name="q_${q.id}" value="${opt.label}" />
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-ink-50">${opt.label}</div>
+                  <div class="text-sm font-semibold text-ink-50">${opt.label}. <span class="font-medium">${opt.text}</span></div>
                 </div>
               `;
               opts.appendChild(label);
@@ -1442,6 +1534,7 @@
         }
 
         function computeMbtiFromQuestions() {
+          // answers: { [qid:number]: "A"|"B"|"C"|"D" }
           const answers = {};
           for (const q of questions) {
             const v = getQuestionValue(q.id);
@@ -1449,32 +1542,49 @@
             answers[q.id] = v;
           }
 
-          const dims = {
-            EI: ["Q1", "Q4"],
-            SN: ["Q2", "Q3"],
-            TF: ["Q5", "Q6"],
-            JP: ["Q7", "Q8"],
+          const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+          Object.entries(answers).forEach(([qid, label]) => {
+            const q = questions.find((x) => String(x.id) === String(qid));
+            const opt = q?.options?.find((o) => o.label === label) || null;
+            if (!opt || !opt.scores) return;
+            Object.entries(opt.scores).forEach(([dim, sc]) => {
+              if (scores[dim] == null) return;
+              scores[dim] += Number(sc) || 0;
+            });
+          });
+
+          const details = {
+            EI: scores.E >= scores.I ? "E" : "I",
+            EI_score: scores.E >= scores.I ? scores.E : scores.I,
+            EI_diff: Math.abs(scores.E - scores.I),
+            SN: scores.S >= scores.N ? "S" : "N",
+            SN_score: scores.S >= scores.N ? scores.S : scores.N,
+            SN_diff: Math.abs(scores.S - scores.N),
+            TF: scores.T >= scores.F ? "T" : "F",
+            TF_score: scores.T >= scores.F ? scores.T : scores.F,
+            TF_diff: Math.abs(scores.T - scores.F),
+            JP: scores.J >= scores.P ? "J" : "P",
+            JP_score: scores.J >= scores.P ? scores.J : scores.P,
+            JP_diff: Math.abs(scores.J - scores.P),
           };
 
-          function pick(dim, aLetter, bLetter, qids) {
-            let a = 0;
-            let b = 0;
-            qids.forEach((id) => {
-              if (answers[id] === aLetter) a += 1;
-              if (answers[id] === bLetter) b += 1;
-            });
-            if (a === b) return answers[qids[0]]; // tie → follow the first question
-            return a > b ? aLetter : bLetter;
-          }
-
-          const EorI = pick("EI", "E", "I", dims.EI);
-          const SorN = pick("SN", "S", "N", dims.SN);
-          const TorF = pick("TF", "T", "F", dims.TF);
-          const JorP = pick("JP", "J", "P", dims.JP);
+          const type = details.EI + details.SN + details.TF + details.JP;
+          const totalDiff = details.EI_diff + details.SN_diff + details.TF_diff + details.JP_diff;
+          const confidence = totalDiff >= 8 ? "高" : totalDiff >= 5 ? "中" : "低";
+          const diffs = [
+            { dim: "EI", diff: details.EI_diff, type: details.EI },
+            { dim: "SN", diff: details.SN_diff, type: details.SN },
+            { dim: "TF", diff: details.TF_diff, type: details.TF },
+            { dim: "JP", diff: details.JP_diff, type: details.JP },
+          ].sort((a, b) => b.diff - a.diff);
 
           return {
-            type: `${EorI}${SorN}${TorF}${JorP}`,
+            type,
             answers,
+            scores,
+            confidence,
+            dominantTrait: diffs[0],
+            details,
           };
         }
 
@@ -2110,7 +2220,7 @@
             hideAlert();
             const computed = computeMbtiFromQuestions();
             if (!computed) {
-              showAlert("请完善客人行为特征勾选", "请完成 8 道导购视角问题后再生成。");
+              showAlert("请完善客人行为特征勾选", "请完成 6 道导购视角问题后再生成。");
               return;
             }
             const type = computed.type;
@@ -2118,6 +2228,11 @@
             el("guestResultCard").classList.add("hidden");
 
             el("guestTypeText").textContent = type;
+            const conf = computed.confidence ? `判断置信度：${computed.confidence}` : "";
+            const dom = computed.dominantTrait?.dim
+              ? `最突出维度：${computed.dominantTrait.dim}（${computed.dominantTrait.type || ""}）`
+              : "";
+            el("guestConfidenceText").textContent = [conf, dom].filter(Boolean).join(" · ");
             const profile = renderGuestProfile(type);
             renderGuestClusterPortrait(type);
             initSalesMbtiSelect();
@@ -2407,10 +2522,9 @@
   </body>
 
   <!--
-    手动验证用例：
-    - 当 8 道题（Q1~Q8）全部选择 A 时，value 分别为：
-      Q1=E, Q2=S, Q3=S, Q4=E, Q5=T, Q6=T, Q7=J, Q8=J
-    - 按当前逻辑：每个维度 2 题取多数票（平票按该维度第一题）
-    - 因此最终输出 MBTI 类型应为：ESTJ
+    手动验证用例（6 题四选一计分版）：
+    - 可用 docs/checkmbti.js 中的 testCases 做交叉验证，例如：
+      ISTJ 典型答案：["A","C","B","C","B","B"]
+      ENFP 典型答案：["D","D","A","B","A","C"]
   -->
 </html>
