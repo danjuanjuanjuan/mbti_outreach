@@ -725,6 +725,36 @@
         line-height: 1.45;
         letter-spacing: 0.04em;
       }
+
+      /* 底部快捷入口：从结果页直达话术生成 */
+      .bottom-cta {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 55;
+        padding: 0.65rem max(1rem, env(safe-area-inset-right, 0px)) max(0.65rem, env(safe-area-inset-bottom, 0px))
+          max(1rem, env(safe-area-inset-left, 0px));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(248, 253, 255, 0.92) 32%, rgba(248, 253, 255, 0.98) 100%);
+        backdrop-filter: blur(10px) saturate(160%);
+      }
+      .bottom-cta .inner {
+        max-width: 28rem;
+        margin: 0 auto;
+      }
+      .bottom-cta .btn {
+        width: 100%;
+        border-radius: 1.2rem;
+        background: #2aa7a1;
+        color: #071018;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        padding: 0.95rem 1rem;
+        box-shadow: 0 18px 40px rgba(42, 167, 161, 0.18);
+      }
+      .bottom-cta .btn:active {
+        transform: scale(0.99);
+      }
     </style>
   </head>
   <body class="wx-page text-ink-50 selection:bg-jade-200/60 selection:text-ink-900">
@@ -1110,6 +1140,13 @@
         <p>在微信中打开本链接即可使用；填写与记录保存在本机浏览器，无上传服务器。</p>
         <p class="mt-1.5">若样式异常，可检查网络是否拦截样式资源。</p>
       </footer>
+    </div>
+
+    <!-- 结果页底部快捷入口：提交化学反应后出现 -->
+    <div id="followupBottomBar" class="bottom-cta hidden" aria-label="直达话术生成">
+      <div class="inner">
+        <button id="btnGoFollowup" class="btn touch-pad" type="button">去生成专属话术</button>
+      </div>
     </div>
 
     <!-- 销售×客人性格匹配逻辑（见 matchLogic.js → window.matchLogic） -->
@@ -1633,6 +1670,7 @@
           const $wrap = el("chemistryResultWrap");
           const $btn = el("btnSubmitChemistry");
           const $hint = el("chemistryStepHint");
+          const $cta = el("followupBottomBar");
           const sales = getSalesMbtiFromSelect();
           const ok = isValidMbti(sales);
 
@@ -1641,11 +1679,13 @@
           if (!submitted) {
             if ($wrap) $wrap.classList.add("hidden");
             if ($hint) $hint.textContent = ok ? `已选择 ${sales}，点击提交生成报告。` : "请选择你的 MBTI 后点击提交。";
+            if ($cta) $cta.classList.add("hidden");
             return;
           }
 
           if ($wrap) $wrap.classList.remove("hidden");
           if ($hint) $hint.textContent = `报告已生成（${sales}）。如需调整可修改选择后再次提交。`;
+          if ($cta) $cta.classList.remove("hidden");
         }
 
         function initChemistrySubmitUX() {
@@ -2298,6 +2338,7 @@
             questions.forEach((q) => clearQuestion(q.id));
             el("guestResultCard").classList.add("hidden");
             el("scriptCard").classList.add("hidden");
+            el("followupBottomBar")?.classList.add("hidden");
             if (el("btnRephraseScript")) el("btnRephraseScript").disabled = true;
             el("guestTypeInput").value = "";
             loadCa();
@@ -2341,6 +2382,15 @@
           initHistory();
           initGlobal();
           setActiveTab("judge");
+
+          // 底部入口：直达话术匹配
+          el("btnGoFollowup")?.addEventListener("click", () => {
+            const type = normalizeMbti(el("guestTypeText")?.textContent?.trim() || "");
+            if (isValidMbti(type)) el("guestTypeInput").value = type;
+            setActiveTab("match");
+            // 让用户直接看到生成按钮
+            el("btnGenerateScript")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          });
 
           if (document.documentElement.getAttribute("data-no-tailwind") === "1") {
             showAlert("已启用离线兜底样式", "当前网络可能拦截了 Tailwind CDN，不影响功能使用。");
