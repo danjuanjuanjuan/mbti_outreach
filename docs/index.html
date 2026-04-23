@@ -663,10 +663,84 @@
           font-size: 1.05rem;
         }
       }
+
+      /* Landing（微信分发首屏） */
+      .landing-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+          max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+        background: radial-gradient(900px 520px at 50% -12%, rgba(129, 216, 208, 0.30), transparent 56%),
+          radial-gradient(820px 520px at 110% 10%, rgba(129, 216, 208, 0.12), transparent 55%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 253, 255, 0.96) 100%);
+        backdrop-filter: blur(12px) saturate(170%);
+      }
+      .landing-card {
+        width: 100%;
+        max-width: 26rem;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(148, 163, 184, 0.30);
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: var(--glass-shadow);
+        padding: 1.1rem 1rem 1rem;
+      }
+      .landing-title {
+        color: #0b1220;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1.35;
+        font-family: ui-serif, Palatino, Georgia, serif;
+      }
+      .landing-desc {
+        margin-top: 0.75rem;
+        color: rgba(15, 23, 42, 0.82);
+        font-size: 0.95rem;
+        line-height: 1.65;
+        letter-spacing: 0.02em;
+        font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      }
+      .landing-cta {
+        margin-top: 0.95rem;
+        width: 100%;
+        border-radius: 1.1rem;
+        background: #2aa7a1;
+        color: #071018;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0.9rem 1rem;
+        box-shadow: 0 18px 40px rgba(42, 167, 161, 0.18);
+      }
+      .landing-cta:active {
+        transform: scale(0.99);
+      }
+      .landing-mini {
+        margin-top: 0.75rem;
+        color: rgba(51, 65, 85, 0.78);
+        font-size: 0.75rem;
+        line-height: 1.45;
+        letter-spacing: 0.04em;
+      }
     </style>
   </head>
   <body class="wx-page text-ink-50 selection:bg-jade-200/60 selection:text-ink-900">
-    <div class="mx-auto w-full max-w-md px-0 pt-4 safe-bottom sm:pt-5">
+    <!-- Landing：用于微信分发首屏解释目的 -->
+    <section id="landingOverlay" class="landing-overlay hidden" aria-label="应用介绍">
+      <div class="landing-card">
+        <div class="landing-title">MBTI Outreach小工具</div>
+        <div class="landing-desc">
+          第一次接待的客人不知道怎么继续跟进？只要通过这个小应用及时记录客人在店内的反应，就帮你生成 MBTI 化学反应，解决你的客人跟进苦恼。
+        </div>
+        <button id="btnEnterApp" class="landing-cta touch-pad" type="button">进入小应用</button>
+        <div class="landing-mini">提示：内容仅保存在本机浏览器，可随时清空。</div>
+      </div>
+    </section>
+
+    <div id="appShell" class="mx-auto w-full max-w-md px-0 pt-4 safe-bottom sm:pt-5">
       <header class="mb-3 sm:mb-4">
         <div class="flex items-center justify-between gap-3">
           <h1 class="min-w-0 text-lg font-semibold tracking-tight sm:text-xl">MBTI Outreach小工具</h1>
@@ -1051,6 +1125,9 @@
           caType: "mbtiOutreach.caType",
           lastGuestType: "mbtiOutreach.lastGuestType",
           history: "mbtiOutreach.history",
+        };
+        const UX_KEYS = {
+          landingSeen: "mbtiOutreach.ux.landingSeen",
         };
 
         const MBTI_TYPES = [
@@ -2230,6 +2307,28 @@
         }
 
         function bootstrap() {
+          // Landing：首次打开先解释用途
+          try {
+            const seen = localStorage.getItem(UX_KEYS.landingSeen) === "1";
+            const $landing = el("landingOverlay");
+            const $app = el("appShell");
+            const $enter = el("btnEnterApp");
+            if ($landing && $app && $enter) {
+              if (!seen) {
+                $landing.classList.remove("hidden");
+                $app.classList.add("hidden");
+              }
+              $enter.addEventListener("click", () => {
+                localStorage.setItem(UX_KEYS.landingSeen, "1");
+                $landing.classList.add("hidden");
+                $app.classList.remove("hidden");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              });
+            }
+          } catch {
+            // ignore
+          }
+
           initTabs();
           initCaSelect();
           loadCa();
