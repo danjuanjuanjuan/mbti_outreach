@@ -1,0 +1,2263 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, user-scalable=yes"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#81d8d0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>MBTI Outreach 小工具</title>
+    <!--
+      微信内 H5：纯静态、localStorage、composeFollowUp 本地组句，无登录后端。
+      建议链接走 HTTPS 域名便于收藏；iOS 输入框用 text-base(16px) 减轻视口缩放。
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // 如果门店网络拦截 CDN，Tailwind 可能加载失败：启用本地兜底样式，避免页面“朴素无样式”。
+      (function () {
+        const markNoTailwind = () => document.documentElement.setAttribute("data-no-tailwind", "1");
+
+        // 2 秒内未加载成功则降级
+        const timer = setTimeout(markNoTailwind, 2000);
+
+        window.addEventListener(
+          "load",
+          () => {
+            // 用一个真实的 Tailwind utility 探测是否生效
+            const probe = document.createElement("div");
+            probe.className = "bg-jade-500";
+            probe.style.position = "fixed";
+            probe.style.left = "-9999px";
+            document.body.appendChild(probe);
+
+            const bg = getComputedStyle(probe).backgroundColor;
+            document.body.removeChild(probe);
+
+            clearTimeout(timer);
+            // Tailwind 生效时通常不是透明/空值
+            if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") markNoTailwind();
+          },
+          { once: true }
+        );
+      })();
+    </script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // Tiffany Blue 系列（保留 jade 变量名，避免大范围改 class）
+              jade: {
+                50: "#effcfa",
+                100: "#d6f6f2",
+                200: "#aeece4",
+                300: "#81d8d0",
+                400: "#4fc2ba",
+                500: "#2aa7a1",
+                600: "#1f8682",
+                700: "#1b6b69",
+                800: "#165554",
+                900: "#0f3c3c",
+              },
+              ink: {
+                50: "#f7f8fb",
+                100: "#eef0f6",
+                200: "#d8dce9",
+                300: "#b6bdd5",
+                400: "#8b95b7",
+                500: "#68749e",
+                600: "#515b82",
+                700: "#414966",
+                800: "#2b3147",
+                900: "#171a2a",
+              },
+              gold: {
+                50: "#fffbeb",
+                100: "#fef3c7",
+                200: "#fde68a",
+                300: "#fcd34d",
+                400: "#fbbf24",
+                500: "#f59e0b",
+                600: "#d97706",
+                700: "#b45309",
+                800: "#92400e",
+                900: "#78350f",
+              },
+            },
+            boxShadow: {
+              card: "0 10px 25px -15px rgba(17, 24, 39, 0.35)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --glass-bg: rgba(255, 255, 255, 0.72);
+        --glass-bg-strong: rgba(255, 255, 255, 0.86);
+        --glass-border: rgba(148, 163, 184, 0.28);
+        --glass-border-strong: rgba(148, 163, 184, 0.38);
+        --glass-shadow: 0 22px 60px rgba(2, 6, 23, 0.10), 0 10px 24px rgba(2, 6, 23, 0.06),
+          0 1px 0 rgba(255, 255, 255, 0.9) inset;
+        --glass-shadow-soft: 0 18px 50px rgba(2, 6, 23, 0.09), 0 8px 18px rgba(2, 6, 23, 0.05),
+          0 1px 0 rgba(255, 255, 255, 0.9) inset;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      html,
+      body {
+        min-height: 100%;
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
+        background: radial-gradient(900px 520px at 50% -12%, rgba(129, 216, 208, 0.25), transparent 56%),
+          radial-gradient(820px 520px at 110% 10%, rgba(129, 216, 208, 0.1), transparent 55%),
+          radial-gradient(900px 600px at -10% 40%, rgba(42, 167, 161, 0.08), transparent 58%),
+          linear-gradient(180deg, #ffffff 0%, #fbfdff 55%, #ffffff 100%);
+      }
+      .safe-bottom {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+      }
+      .wx-page {
+        padding-left: max(1rem, env(safe-area-inset-left, 0px));
+        padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      }
+      .touch-pad {
+        min-height: 2.75rem;
+        touch-action: manipulation;
+      }
+
+      /* 微信式预览气泡（跟进度话术） */
+      .wx-mock {
+        background: #ededed;
+        border-radius: 1rem;
+        padding: 0.6rem 0.65rem 0.85rem;
+        max-width: 100%;
+      }
+      .wx-mock .wx-hint {
+        text-align: center;
+        font-size: 0.7rem;
+        color: rgba(15, 23, 42, 0.45);
+        margin-bottom: 0.4rem;
+        letter-spacing: 0.04em;
+      }
+      .wx-mock .wx-row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-start;
+        gap: 0.45rem;
+      }
+      .wx-mock .wx-avatar {
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 0.2rem;
+        flex-shrink: 0;
+        background: linear-gradient(145deg, #9fe7df, #2aa7a1);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+      }
+      .wx-mock .wx-bubble {
+        max-width: 86%;
+        background: #95ec69;
+        color: #0f172a;
+        border-radius: 0.45rem 0.45rem 0.12rem 0.45rem;
+        padding: 0.55rem 0.7rem 0.5rem;
+        font-size: max(0.9rem, 16px);
+        line-height: 1.55;
+        letter-spacing: 0.05em;
+        text-align: left;
+        position: relative;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+        word-break: break-word;
+        font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      }
+      .wx-mock .wx-bubble::after {
+        content: "";
+        position: absolute;
+        right: -5px;
+        top: 0.5rem;
+        border: 5px solid transparent;
+        border-left: 5px solid #95ec69;
+      }
+
+      /* 复制成功等：Tiffany Blue 调提示条 */
+      #alertBar.alert-bar--tiffany {
+        border-color: #81d8d0;
+        background: linear-gradient(180deg, rgba(129, 216, 208, 0.22) 0%, rgba(255, 255, 255, 0.96) 100%);
+        box-shadow: 0 10px 28px rgba(42, 167, 161, 0.14);
+      }
+      #alertBar.alert-bar--tiffany #alertBarDot {
+        background: #2aa7a1;
+        box-shadow: 0 0 0 3px rgba(129, 216, 208, 0.35);
+      }
+      #alertBar.alert-bar--tiffany #alertText,
+      #alertBar.alert-bar--tiffany #alertSubText {
+        color: #0a1628;
+      }
+      #alertBar.alert-bar--tiffany #alertSubText {
+        opacity: 0.8;
+      }
+
+      /* "Liquid glass" polish */
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "kern" 1, "liga" 1;
+      }
+
+      /* ------------------------------
+         Fallback styles (no Tailwind)
+         Scope: html[data-no-tailwind="1"]
+         ------------------------------ */
+      html[data-no-tailwind="1"] {
+        --jade-400: #4fc2ba;
+        --jade-500: #2aa7a1;
+        --jade-600: #1f8682;
+        --ink-50: #0b1220;
+        --ink-100: #0f172a;
+        --ink-200: #334155;
+        --ink-700: #cbd5e1;
+        --ink-900: #ffffff;
+        --gold-400: #fbbf24;
+        --gold-500: #f59e0b;
+      }
+
+      html[data-no-tailwind="1"] body {
+        margin: 0;
+        color: var(--ink-50);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+
+      html[data-no-tailwind="1"] .mx-auto {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      html[data-no-tailwind="1"] .w-full {
+        width: 100%;
+      }
+      html[data-no-tailwind="1"] .max-w-md {
+        max-width: 28rem;
+      }
+      html[data-no-tailwind="1"] .px-4 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      html[data-no-tailwind="1"] .pt-5 {
+        padding-top: 1.25rem;
+      }
+      html[data-no-tailwind="1"] .pb-6 {
+        padding-bottom: 1.5rem;
+      }
+      html[data-no-tailwind="1"] .mb-4 {
+        margin-bottom: 1rem;
+      }
+      html[data-no-tailwind="1"] .mt-6 {
+        margin-top: 1.5rem;
+      }
+      html[data-no-tailwind="1"] .mt-4 {
+        margin-top: 1rem;
+      }
+      html[data-no-tailwind="1"] .mt-3 {
+        margin-top: 0.75rem;
+      }
+      html[data-no-tailwind="1"] .mt-2 {
+        margin-top: 0.5rem;
+      }
+
+      html[data-no-tailwind="1"] .text-xs {
+        font-size: 0.75rem;
+        line-height: 1rem;
+      }
+      html[data-no-tailwind="1"] .text-sm {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+      }
+      html[data-no-tailwind="1"] .text-xl {
+        font-size: 1.25rem;
+        line-height: 1.75rem;
+      }
+      html[data-no-tailwind="1"] .text-2xl {
+        font-size: 1.5rem;
+        line-height: 2rem;
+      }
+      html[data-no-tailwind="1"] .text-3xl {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+      }
+      html[data-no-tailwind="1"] .font-medium {
+        font-weight: 500;
+      }
+      html[data-no-tailwind="1"] .font-semibold {
+        font-weight: 600;
+      }
+
+      html[data-no-tailwind="1"] .grid {
+        display: grid;
+      }
+      html[data-no-tailwind="1"] .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      html[data-no-tailwind="1"] .grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      html[data-no-tailwind="1"] .gap-2 {
+        gap: 0.5rem;
+      }
+      html[data-no-tailwind="1"] .gap-3 {
+        gap: 0.75rem;
+      }
+      html[data-no-tailwind="1"] .space-y-4 > * + * {
+        margin-top: 1rem;
+      }
+      html[data-no-tailwind="1"] .space-y-3 > * + * {
+        margin-top: 0.75rem;
+      }
+      html[data-no-tailwind="1"] .space-y-2 > * + * {
+        margin-top: 0.5rem;
+      }
+
+      html[data-no-tailwind="1"] .flex {
+        display: flex;
+      }
+      html[data-no-tailwind="1"] .items-center {
+        align-items: center;
+      }
+      html[data-no-tailwind="1"] .items-start {
+        align-items: flex-start;
+      }
+      html[data-no-tailwind="1"] .items-end {
+        align-items: flex-end;
+      }
+      html[data-no-tailwind="1"] .justify-between {
+        justify-content: space-between;
+      }
+
+      html[data-no-tailwind="1"] .rounded-xl {
+        border-radius: 0.75rem;
+      }
+      html[data-no-tailwind="1"] .rounded-2xl {
+        border-radius: 1rem;
+      }
+      html[data-no-tailwind="1"] .border {
+        border-width: 1px;
+        border-style: solid;
+      }
+
+      html[data-no-tailwind="1"] .shadow-card {
+        box-shadow: var(--glass-shadow-soft);
+      }
+
+      html[data-no-tailwind="1"] button,
+      html[data-no-tailwind="1"] input,
+      html[data-no-tailwind="1"] select {
+        font: inherit;
+      }
+
+      html[data-no-tailwind="1"] button {
+        cursor: pointer;
+      }
+      html[data-no-tailwind="1"] button:active {
+        transform: scale(0.99);
+      }
+
+      /* Colors mapped from Tailwind config */
+      html[data-no-tailwind="1"] .bg-jade-500 {
+        background: var(--jade-500);
+      }
+      html[data-no-tailwind="1"] .bg-jade-400 {
+        background: var(--jade-400);
+      }
+      html[data-no-tailwind="1"] .bg-ink-900\/40 {
+        background: var(--glass-bg-strong);
+      }
+      html[data-no-tailwind="1"] .bg-ink-900\/30 {
+        background: var(--glass-bg-strong);
+      }
+      html[data-no-tailwind="1"] .bg-ink-900\/20 {
+        background: var(--glass-bg);
+      }
+      html[data-no-tailwind="1"] .bg-gold-500\/10 {
+        background: rgba(245, 158, 11, 0.1);
+      }
+      html[data-no-tailwind="1"] .bg-jade-500\/10 {
+        background: rgba(42, 167, 161, 0.1);
+      }
+
+      html[data-no-tailwind="1"] .border-ink-700\/60 {
+        border-color: var(--glass-border);
+      }
+      html[data-no-tailwind="1"] .border-gold-500\/30 {
+        border-color: rgba(245, 158, 11, 0.3);
+      }
+      html[data-no-tailwind="1"] .border-jade-300\/40 {
+        border-color: rgba(129, 216, 208, 0.4);
+      }
+
+      html[data-no-tailwind="1"] .text-ink-50 {
+        color: var(--ink-50);
+      }
+      html[data-no-tailwind="1"] .text-ink-100 {
+        color: var(--ink-100);
+      }
+      html[data-no-tailwind="1"] .text-ink-100\/90 {
+        color: rgba(15, 23, 42, 0.9);
+      }
+      html[data-no-tailwind="1"] .text-ink-200\/80 {
+        color: rgba(51, 65, 85, 0.85);
+      }
+      html[data-no-tailwind="1"] .text-ink-200\/70 {
+        color: rgba(51, 65, 85, 0.75);
+      }
+      html[data-no-tailwind="1"] .text-jade-700 {
+        color: var(--jade-600);
+      }
+      html[data-no-tailwind="1"] .text-ink-900 {
+        color: var(--ink-100);
+      }
+
+      html[data-no-tailwind="1"] input[type="text"],
+      html[data-no-tailwind="1"] select {
+        width: 100%;
+        border-radius: 0.75rem;
+        border: 1px solid var(--glass-border-strong);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.75rem;
+        color: var(--ink-50);
+        outline: none;
+      }
+      html[data-no-tailwind="1"] input[type="text"]:focus,
+      html[data-no-tailwind="1"] select:focus {
+        border-color: rgba(79, 194, 186, 0.7);
+        box-shadow: 0 0 0 4px rgba(129, 216, 208, 0.18);
+      }
+
+      html[data-no-tailwind="1"] input[type="radio"] {
+        accent-color: var(--jade-400);
+      }
+
+      html[data-no-tailwind="1"] .hidden {
+        display: none !important;
+      }
+
+      /* Make cards readable even without Tailwind */
+      html[data-no-tailwind="1"] .tabBtn,
+      html[data-no-tailwind="1"] .tabPanel > div,
+      html[data-no-tailwind="1"] #guestResultCard,
+      html[data-no-tailwind="1"] #scriptCard {
+        backdrop-filter: blur(14px) saturate(160%);
+      }
+
+      /* Light theme overrides (Tailwind loaded) */
+      body {
+        color: #0b1220;
+      }
+
+      .bg-ink-900\/40 {
+        background: var(--glass-bg-strong) !important;
+        backdrop-filter: blur(14px) saturate(160%) !important;
+      }
+      .bg-ink-900\/30 {
+        background: var(--glass-bg-strong) !important;
+        backdrop-filter: blur(14px) saturate(160%) !important;
+      }
+      .bg-ink-900\/20 {
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(14px) saturate(160%) !important;
+      }
+      .border-ink-700\/60 {
+        border-color: var(--glass-border) !important;
+      }
+
+      .shadow-card {
+        box-shadow: var(--glass-shadow-soft) !important;
+      }
+
+      .text-ink-50 {
+        color: #0b1220 !important;
+      }
+      .text-ink-100\/90 {
+        color: rgba(15, 23, 42, 0.92) !important;
+      }
+      .text-ink-200\/80 {
+        color: rgba(51, 65, 85, 0.85) !important;
+      }
+      .text-ink-200\/70 {
+        color: rgba(51, 65, 85, 0.75) !important;
+      }
+      .text-jade-700 {
+        color: #1f8682 !important;
+      }
+
+      /* Refine nav tabs to feel like "glass buttons" */
+      .tabBtn {
+        box-shadow: 0 12px 28px rgba(2, 6, 23, 0.06), 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+      }
+
+      /* Inputs in glass style */
+      input[type="text"],
+      select {
+        border-color: var(--glass-border-strong) !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+      }
+      input[type="text"]:focus,
+      select:focus {
+        box-shadow: 0 0 0 4px rgba(129, 216, 208, 0.18) !important;
+      }
+
+      /* Make primary buttons feel "gel-like" without changing markup */
+      .bg-jade-500 {
+        box-shadow: 0 14px 30px rgba(42, 167, 161, 0.22), 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+      }
+
+      /* Slightly increase breathing room */
+      .max-w-md {
+        max-width: 29rem;
+      }
+
+      /* Result reveal: subtle gradient fade-in */
+      .result-reveal {
+        position: relative;
+        overflow: hidden;
+      }
+      .result-reveal::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(700px 240px at 50% -10%, rgba(129, 216, 208, 0.35), transparent 60%);
+        opacity: 0;
+        pointer-events: none;
+        animation: revealGlow 520ms ease forwards;
+      }
+      @keyframes revealGlow {
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInUpSoft {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in-soft {
+        animation: fadeInUpSoft 460ms ease both;
+      }
+
+      /* Tiffany 结果区排版：衬线标题 + 字距 */
+      .tiffany-serif-title {
+        font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman",
+          serif;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+      .tiffany-trace {
+        letter-spacing: 0.05em;
+      }
+
+      /* 「顶级导购眼中的客人画像」正文：高对比黑字，避免浅灰在浅底上不可见 */
+      #guestClusterPortrait.portrait-text {
+        color: #0a0a0a !important;
+      }
+
+      .healing-pill {
+        cursor: pointer;
+        border-radius: 0.75rem;
+        transition: box-shadow 0.35s ease, transform 0.35s ease, background 0.35s ease;
+      }
+      .healing-pill.is-cheer {
+        animation: cheerBump 0.65s ease;
+        box-shadow: 0 0 0 3px rgba(255, 214, 170, 0.45), 0 12px 32px rgba(2, 6, 23, 0.12);
+      }
+      @keyframes cheerBump {
+        0% {
+          transform: scale(1);
+        }
+        40% {
+          transform: scale(1.02);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      details.chemistry-details > summary {
+        list-style: none;
+      }
+      details.chemistry-details > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.chemistry-details > summary::after {
+        content: "＋";
+        float: right;
+        opacity: 0.5;
+        font-weight: 300;
+        letter-spacing: 0.05em;
+      }
+      details.chemistry-details[open] > summary::after {
+        content: "－";
+      }
+
+      /* AI thinking dots (CSS-only, reliable) */
+      .aiDots {
+        display: inline-flex;
+        gap: 2px;
+        margin-left: 4px;
+        transform: translateY(-1px);
+      }
+      .aiDots .d {
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.55);
+        opacity: 0.25;
+        animation: dotPulse 900ms ease-in-out infinite;
+      }
+      .aiDots .d:nth-child(2) {
+        animation-delay: 150ms;
+      }
+      .aiDots .d:nth-child(3) {
+        animation-delay: 300ms;
+      }
+      @keyframes dotPulse {
+        0%,
+        100% {
+          opacity: 0.25;
+          transform: translateY(0);
+        }
+        50% {
+          opacity: 0.85;
+          transform: translateY(-2px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fade-in-soft {
+          transition: none !important;
+          animation: none !important;
+        }
+        .healing-pill.is-cheer {
+          animation: none !important;
+        }
+      }
+
+      @media (max-width: 380px) {
+        h1 {
+          font-size: 1.05rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="wx-page text-ink-50 selection:bg-jade-200/60 selection:text-ink-900">
+    <div class="mx-auto w-full max-w-md px-0 pt-4 safe-bottom sm:pt-5">
+      <header class="mb-3 sm:mb-4">
+        <div class="flex items-center justify-between gap-3">
+          <h1 class="min-w-0 text-lg font-semibold tracking-tight sm:text-xl">MBTI Outreach小工具</h1>
+          <button
+            id="btnResetAll"
+            class="touch-pad shrink-0 rounded-xl border border-ink-700/60 bg-ink-900/40 px-3 text-xs font-medium text-ink-100 hover:bg-ink-900/60 active:scale-[0.99] sm:py-2"
+            type="button"
+            title="清空本地数据"
+          >
+            清空
+          </button>
+        </div>
+      </header>
+
+      <nav class="mb-3 grid grid-cols-3 gap-2 sm:mb-4" role="tablist" aria-label="主功能">
+        <button
+          data-tab="judge"
+          class="tabBtn touch-pad rounded-2xl border border-ink-700/60 bg-ink-900/40 px-2 py-3 text-sm font-semibold text-ink-50 shadow-card"
+          type="button"
+        >
+          客人判断
+        </button>
+        <button
+          data-tab="match"
+          class="tabBtn touch-pad rounded-2xl border border-ink-700/60 bg-ink-900/20 px-2 py-3 text-sm font-semibold text-ink-100/90"
+          type="button"
+        >
+          话术匹配
+        </button>
+        <button
+          data-tab="history"
+          class="tabBtn touch-pad rounded-2xl border border-ink-700/60 bg-ink-900/20 px-2 py-3 text-sm font-semibold text-ink-100/90"
+          type="button"
+        >
+          历史
+        </button>
+      </nav>
+
+      <section id="alertBar" class="mb-4 hidden rounded-2xl border border-jade-300/40 bg-jade-500/10 px-4 py-3">
+        <div class="flex items-start gap-3">
+          <div id="alertBarDot" class="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-jade-400"></div>
+          <div class="min-w-0">
+            <div id="alertText" class="text-sm font-medium text-ink-50"></div>
+            <div id="alertSubText" class="mt-1 hidden text-xs text-ink-100/80"></div>
+          </div>
+        </div>
+      </section>
+
+      <main class="space-y-4">
+        <!-- Tab: Judge -->
+        <section id="tab-judge" class="tabPanel space-y-4">
+          <div id="judgeFormCard" class="rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-sm font-semibold">客人 MBTI 判断</div>
+              <div class="text-xs text-ink-200/80">8 题快速判断</div>
+            </div>
+            <div class="mt-4 space-y-4">
+              <div id="judgeQuestions" class="space-y-4"></div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-2">
+              <button
+                id="btnGenerateGuest"
+                class="rounded-2xl bg-jade-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-card hover:bg-jade-400 active:scale-[0.99]"
+                type="button"
+              >
+                生成 MBTI
+              </button>
+              <button
+                id="btnClearJudge"
+                class="rounded-2xl border border-ink-700/60 bg-ink-900/30 px-4 py-3 text-sm font-semibold text-ink-50 hover:bg-ink-900/50 active:scale-[0.99]"
+                type="button"
+              >
+                清空勾选
+              </button>
+            </div>
+          </div>
+
+          <div id="guestResultCard" class="hidden rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-sm font-semibold tiffany-serif-title">判断结果</div>
+              <button
+                id="btnUseForMatch"
+                type="button"
+                class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99] tiffany-trace"
+              >
+                用于话术匹配
+              </button>
+            </div>
+
+            <!-- 1) 客人 MBTI 大标题 -->
+            <div class="mt-4 tiffany-trace">
+              <div class="flex items-end justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-xs text-ink-200/80">客人 MBTI</div>
+                  <div id="guestTypeText" class="mt-1 text-4xl font-semibold tracking-widest"></div>
+                </div>
+                <button
+                  id="btnCopyGuestType"
+                  class="shrink-0 rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+                  type="button"
+                >
+                  复制
+                </button>
+              </div>
+            </div>
+
+            <!-- 2) 客人画像（不依赖销售信息） -->
+            <div class="mt-4 rounded-2xl border border-ink-700/60 bg-white/75 p-4">
+              <h3 class="tiffany-serif-title text-sm text-jade-700">客人画像</h3>
+              <p id="guestClusterPortrait" class="portrait-text mt-2 text-sm leading-relaxed tiffany-trace"></p>
+            </div>
+
+            <!-- 客人呈现（精简版）：仅关键词 -->
+            <div id="guestInterpretation" class="mt-4 space-y-3 text-sm leading-relaxed text-ink-50">
+              <div class="rounded-2xl border border-ink-700/60 bg-white/75 p-4">
+                <div class="text-xs font-semibold tiffany-serif-title text-jade-700">性格关键词</div>
+                <div id="guestKeywords" class="mt-2 flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <!-- 3) 选择你的 MBTI（下拉）并查看化学反应 -->
+            <div
+              id="salesSelfAwarenessCard"
+              class="mt-4 rounded-2xl border-2 border-[#81D8D0] bg-white/40 p-4 shadow-sm backdrop-blur-sm"
+            >
+              <h3 class="tiffany-serif-title text-sm text-jade-700">选择你的 MBTI，查看与客人的化学反应</h3>
+              <p class="mt-1 text-xs text-ink-200/80 tiffany-trace">先选择，再提交生成化学反应报告（本地保存，可随时修改）。</p>
+              <div class="mt-3">
+                <label class="text-xs font-semibold tiffany-trace text-ink-200/90">导购 MBTI</label>
+                <select
+                  id="salesMbtiSelect"
+                  class="mt-2 w-full rounded-xl border border-ink-700/60 bg-white/70 px-3 py-3 text-base text-ink-50 outline-none focus:border-jade-400"
+                >
+                  <option value="">请选择（如 ESTJ）</option>
+                </select>
+              </div>
+              <div id="salesProfileText" class="mt-3 hidden rounded-2xl border border-ink-700/60 bg-white/75 p-4">
+                <div class="text-xs font-semibold tiffany-serif-title text-jade-700">导购画像</div>
+                <div id="salesProfileDesc" class="mt-2 text-sm leading-relaxed tiffany-trace" style="color:#0a0a0a;"></div>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  id="btnSubmitChemistry"
+                  type="button"
+                  class="rounded-2xl bg-jade-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-card hover:bg-jade-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled
+                >
+                  提交并查看结果
+                </button>
+                <button
+                  id="btnEditChemistry"
+                  type="button"
+                  class="rounded-2xl border border-ink-700/60 bg-ink-900/20 px-4 py-3 text-sm font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+                >
+                  修改选择
+                </button>
+              </div>
+              <div id="chemistryStepHint" class="mt-2 text-xs text-ink-200/80 tiffany-trace">
+                请选择你的 MBTI 后点击提交。
+              </div>
+            </div>
+
+            <!-- 4) 实操建议（优先展示） -->
+            <div id="chemistryResultWrap" class="mt-4 hidden space-y-3">
+              <div class="rounded-2xl border-2 border-[#81D8D0] bg-white/40 p-4 shadow-sm backdrop-blur-sm">
+                <h3 class="tiffany-serif-title text-sm text-jade-700">实操建议</h3>
+                <!-- 留白：后续你在 matchLogic.js 调整文案后，这里再接入渲染 -->
+                <div id="practiceAdvice" class="mt-3 text-sm tiffany-trace"></div>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-2">
+              <button
+                id="btnRejudge"
+                class="rounded-2xl bg-jade-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-card hover:bg-jade-400 active:scale-[0.99] tiffany-trace"
+                type="button"
+              >
+                重新判断
+              </button>
+              <button
+                id="btnCopyGuestFull"
+                class="rounded-2xl border border-ink-700/60 bg-ink-900/20 px-4 py-3 text-sm font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99] tiffany-trace"
+                type="button"
+              >
+                复制全部
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab: Match -->
+        <section id="tab-match" class="tabPanel hidden space-y-4">
+          <div class="rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
+            <div class="text-sm font-semibold">跟进话术生成</div>
+
+            <div class="mt-4 space-y-4">
+              <div class="rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4">
+                <div class="text-sm font-semibold">称呼</div>
+                <div class="mt-3">
+                  <input
+                    id="clientNameInput"
+                    type="text"
+                    inputmode="text"
+                    enterkeyhint="done"
+                    placeholder="如：张女士 / 李先生 / 您好"
+                    class="w-full rounded-xl border border-ink-700/60 bg-ink-900/30 px-3 py-3 text-base text-ink-50 outline-none focus:border-jade-400"
+                    maxlength="8"
+                    autocomplete="name"
+                  />
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm font-semibold">我的 MBTI（CA）</div>
+                  <button
+                    id="btnEditCa"
+                    class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+                    type="button"
+                  >
+                    修改
+                  </button>
+                </div>
+
+                <div id="caSavedRow" class="mt-3 flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-xs text-ink-200/80">已保存</div>
+                    <div id="caTypeSaved" class="mt-1 text-2xl font-semibold tracking-wide"></div>
+                  </div>
+                  <button
+                    id="btnClearCa"
+                    type="button"
+                    class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+                  >
+                    移除
+                  </button>
+                </div>
+
+                <div id="caInputRow" class="mt-3 hidden">
+                  <label class="text-xs font-semibold text-ink-200/90">选择你的 MBTI</label>
+                  <div class="mt-2 flex gap-2">
+                    <select
+                      id="caTypeSelect"
+                      class="w-full rounded-xl border border-ink-700/60 bg-ink-900/30 px-3 py-3 text-base text-ink-50 outline-none focus:border-jade-400"
+                    >
+                      <option value="">请选择（如 ESTJ）</option>
+                    </select>
+                    <button
+                      id="btnSaveCa"
+                      type="button"
+                      class="rounded-xl bg-jade-500 px-4 py-3 text-sm font-semibold text-ink-900 hover:bg-jade-400 active:scale-[0.99]"
+                    >
+                      保存
+                    </button>
+                  </div>
+                  <div class="mt-2 text-xs text-ink-200/80">保存后将用于后续所有匹配（本地存储）。</div>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm font-semibold">客人 MBTI</div>
+                  <button
+                    id="btnUseLastGuest"
+                    type="button"
+                    class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+                  >
+                    使用刚生成
+                  </button>
+                </div>
+                <div class="mt-3">
+                  <label class="text-xs font-semibold text-ink-200/90">输入 4 字母类型</label>
+                  <input
+                    id="guestTypeInput"
+                    type="text"
+                    inputmode="text"
+                    autocapitalize="characters"
+                    autocomplete="off"
+                    placeholder="如 INFP"
+                    class="mt-2 w-full rounded-xl border border-ink-700/60 bg-ink-900/30 px-3 py-3 text-base text-ink-50 outline-none focus:border-jade-400"
+                    maxlength="4"
+                    autocorrect="off"
+                    spellcheck="false"
+                  />
+                  <div class="mt-2 text-xs text-ink-200/80">可从「客人判断」一键带入，或手动输入。</div>
+                </div>
+              </div>
+
+              <button
+                id="btnGenerateScript"
+                class="touch-pad w-full rounded-2xl bg-jade-500 px-4 py-3.5 text-sm font-semibold text-ink-900 shadow-card hover:bg-jade-400 active:scale-[0.99]"
+                type="button"
+              >
+                生成专属话术
+              </button>
+            </div>
+          </div>
+
+          <div id="scriptCard" class="hidden rounded-2xl border border-ink-700/60 bg-[#F0FBFB] p-4 shadow-card">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div
+                class="text-sm font-semibold"
+                style="color: #0a0a0a; letter-spacing: 0.05em; font-family: ui-serif, Palatino, Georgia, serif"
+              >
+                专属跟进话术
+              </div>
+              <div class="flex max-w-full flex-wrap items-center justify-end gap-2">
+                <button
+                  id="btnRephraseScript"
+                  class="touch-pad rounded-xl border border-ink-700/60 bg-white/80 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-white active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                  type="button"
+                >
+                  换个说法
+                </button>
+                <button
+                  id="btnCopyAllScripts"
+                  class="touch-pad rounded-xl border border-[#81D8D0] bg-white/90 px-3 py-2 text-xs font-semibold hover:bg-white active:scale-[0.99]"
+                  type="button"
+                  style="color: #0a0a0a"
+                >
+                  一键复制
+                </button>
+              </div>
+            </div>
+
+            <p id="scriptMeta" class="mt-3 text-sm font-medium leading-relaxed text-ink-800"></p>
+
+            <div class="mt-4">
+              <div class="wx-mock" aria-label="话术预览">
+                <div class="wx-hint">发微信前预览</div>
+                <div class="wx-row">
+                  <div id="wxBubbleText" class="wx-bubble" role="text">—</div>
+                  <div class="wx-avatar" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
+            <div id="sGreeting" class="hidden" aria-hidden="true"></div>
+            <div id="sQA" class="hidden"></div>
+            <div id="sClose" class="hidden"></div>
+          </div>
+        </section>
+
+        <!-- Tab: History -->
+        <section id="tab-history" class="tabPanel hidden space-y-4">
+          <div class="rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-sm font-semibold">本地历史记录</div>
+              <button
+                id="btnClearHistory"
+                type="button"
+                class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]"
+              >
+                清空历史
+              </button>
+            </div>
+            <div class="mt-2 text-xs text-ink-200/80">仅保存在本机浏览器（localStorage）。</div>
+          </div>
+          <div id="historyList" class="space-y-3"></div>
+          <div id="historyEmpty" class="hidden rounded-2xl border border-ink-700/60 bg-ink-900/20 p-6 text-center text-sm text-ink-200/90">
+            暂无记录。可先在“客人判断/话术匹配”生成一次。
+          </div>
+        </section>
+      </main>
+
+      <footer class="mt-8 pb-8 text-center text-xs leading-relaxed text-ink-200/80">
+        <p>在微信中打开本链接即可使用；填写与记录保存在本机浏览器，无上传服务器。</p>
+        <p class="mt-1.5">若样式异常，可检查网络是否拦截样式资源。</p>
+      </footer>
+    </div>
+
+    <!-- 销售×客人性格匹配逻辑（见 matchLogic.js → window.matchLogic） -->
+    <script src="matchLogic.js"></script>
+    <!-- followuplogic.js → window.followUpLogic；followup.js → composeFollowUp / generateFollowUp -->
+    <script src="followuplogic.js"></script>
+    <script src="followup.js"></script>
+    <script>
+      (function () {
+        /* matchLogic: 主逻辑顶部依赖 matchLogic.js 将对象挂到 window.matchLogic */
+
+        const STORAGE_KEYS = {
+          caType: "mbtiOutreach.caType",
+          lastGuestType: "mbtiOutreach.lastGuestType",
+          history: "mbtiOutreach.history",
+        };
+
+        const MBTI_TYPES = [
+          "ISTJ",
+          "ISFJ",
+          "INFJ",
+          "INTJ",
+          "ISTP",
+          "ISFP",
+          "INFP",
+          "INTP",
+          "ESTP",
+          "ESFP",
+          "ENFP",
+          "ENTP",
+          "ESTJ",
+          "ESFJ",
+          "ENFJ",
+          "ENTJ",
+        ];
+
+        const MBTI_PROFILE_MAP = new Map([
+          [
+            "ISTJ",
+            {
+              keywords: ["严谨", "可靠", "重标准", "务实"],
+              shoppingStyle: "会先看材质、工艺、证书与售后细则，倾向“少而精”，更喜欢经典款与可长期佩戴的设计。",
+              salesAdvice: "用清晰结构讲重点：材质参数、工艺亮点、保养与售后政策；少夸张，多给对比点与结论，让他/她按标准快速判断。",
+            },
+          ],
+          [
+            "ISFJ",
+            {
+              keywords: ["体贴", "稳定", "重安心", "细致"],
+              shoppingStyle: "关注佩戴舒适度与日常搭配，购买动机常与“守护/纪念/送礼”相关，偏好温柔耐看、不张扬的款式。",
+              salesAdvice: "先确认场景与收礼对象，强调寓意与贴心细节（佩戴感、不过敏、维修便利）；语气温和，给“安心选择”的推荐。",
+            },
+          ],
+          [
+            "INFJ",
+            {
+              keywords: ["理想感", "洞察", "重意义", "克制"],
+              shoppingStyle: "更在意设计背后的故事与象征意义，喜欢低调但有精神内核的款式，愿意为“对的感觉”买单。",
+              salesAdvice: "用故事与象征打开：把设计理念、寓意与个人场景连接起来；给 2-3 个“更贴合你气质/阶段”的精确推荐，避免过度推销。",
+            },
+          ],
+          [
+            "INTJ",
+            {
+              keywords: ["目标导向", "高标准", "理性", "讲效率"],
+              shoppingStyle: "会快速筛选条件（预算/材质/用途），希望你直接给最优解；偏好极简、线条干净、可长期持有的款式。",
+              salesAdvice: "先问清约束（预算、用途、风格）→ 给“最优解 + 备选”并说明理由；提供关键参数与购买路径，减少闲聊与反复。",
+            },
+          ],
+          [
+            "ISTP",
+            {
+              keywords: ["冷静", "独立", "重质感", "讲体验"],
+              shoppingStyle: "喜欢自己上手试戴、看细节与做工，重视佩戴手感与耐用性；对花哨话术不敏感。",
+              salesAdvice: "少说多让他/她试：用触感、牢固度、工艺细节说话；回答问题要短、准、可验证（比如对比细节与使用场景）。",
+            },
+          ],
+          [
+            "ISFP",
+            {
+              keywords: ["审美", "温柔", "随性", "重感受"],
+              shoppingStyle: "很看重“上手好不好看”“当下心情合不合”，偏好精致、舒服、有温度的设计，容易被氛围与搭配打动。",
+              salesAdvice: "用轻柔语气引导试戴与搭配：强调气质、肤色、场景；少压力、多鼓励，让他/她用感觉选到“最像自己”的那款。",
+            },
+          ],
+          [
+            "INFP",
+            {
+              keywords: ["浪漫", "真诚", "重意义", "敏感"],
+              shoppingStyle: "购买常与情感/纪念有关，喜欢有寓意的系列与故事；不喜欢被催促，容易在“更有意义的那款”里纠结。",
+              salesAdvice: "先共情与倾听：问纪念点/想表达什么；强调寓意与情感表达，给“选它的理由”而非强推，推进时用温和的选择题。",
+            },
+          ],
+          [
+            "INTP",
+            {
+              keywords: ["好奇", "逻辑", "爱研究", "重合理性"],
+              shoppingStyle: "喜欢了解设计与工艺逻辑，会问“为什么这样做”；愿意为独特结构与理念买单，但讨厌空泛形容词。",
+              salesAdvice: "用“原理 + 证据”表达：工艺原理、材料特性、对比差异；允许他/她提问并给资料点，最后再收敛成 2 个最匹配选项。",
+            },
+          ],
+          [
+            "ESTP",
+            {
+              keywords: ["果断", "敢尝试", "现实", "重当下"],
+              shoppingStyle: "试戴快、决策快，喜欢“上手有存在感”的款式；在意是否能立刻提升形象与场面感。",
+              salesAdvice: "节奏要快：直接上手试戴、用镜子/搭配出效果；突出“上手显贵/显精神”的卖点，给限时/现货信息辅助落单。",
+            },
+          ],
+          [
+            "ESFP",
+            {
+              keywords: ["热情", "爱分享", "重氛围", "好看优先"],
+              shoppingStyle: "喜欢被欢迎与被夸赞，偏好亮眼、好出片、适合社交的款式；容易被整体体验与服务打动。",
+              salesAdvice: "用赞美和氛围引导：多给试戴与拍照位，强调“出片/显气色/社交场合”；用轻松语言推进，不要讲太多参数。",
+            },
+          ],
+          [
+            "ENFP",
+            {
+              keywords: ["有趣", "热情", "灵感", "重故事"],
+              shoppingStyle: "喜欢新鲜感与故事感，容易被系列灵感/象征意义吸引；可能在多款之间跳跃，需要你帮他/她收敛选择。",
+              salesAdvice: "先聊愿景与场景：这次想表达什么、想呈现怎样的自己；用故事连接款式，再把选择收敛到 2-3 个“最像你”的推荐。",
+            },
+          ],
+          [
+            "ENTP",
+            {
+              keywords: ["机智", "爱辩", "点子多", "重新奇"],
+              shoppingStyle: "喜欢独特设计与“有梗”的细节，会挑战你的观点；对常规款兴趣一般，更愿意尝试特别但合理的选择。",
+              salesAdvice: "把他/她当“共创”伙伴：给对比与反问、讨论设计亮点；用逻辑说服同时保持轻松，最后用明确的利弊总结帮助拍板。",
+            },
+          ],
+          [
+            "ESTJ",
+            {
+              keywords: ["直接", "务实", "讲结果", "有主见"],
+              shoppingStyle: "目标明确，关注性价比与落地方案；喜欢高效率服务与清晰的购买流程。",
+              salesAdvice: "先问需求与预算→ 给最匹配的 1-2 款并说明理由；强调售后、交付、保养；推进时给明确下一步（确认尺码/现货/付款方式）。",
+            },
+          ],
+          [
+            "ESFJ",
+            {
+              keywords: ["亲和", "重关系", "体面", "讲礼仪"],
+              shoppingStyle: "重视送礼与仪式感，关注对方喜好与场合体面；偏爱经典耐看、寓意吉祥的款式与套装搭配。",
+              salesAdvice: "多问“给谁/什么场合”，用体面与寓意做核心；提供搭配与包装建议，语气亲切专业，让他/她感到被照顾和被认可。",
+            },
+          ],
+          [
+            "ENFJ",
+            {
+              keywords: ["共情", "感染力", "重体验", "会照顾人"],
+              shoppingStyle: "在意整体体验与对方感受，愿意为“让人开心/被理解”的意义买单；喜欢你给到有温度的推荐理由。",
+              salesAdvice: "用共情与场景化表达：把款式与“想传递的情绪”连接；给清晰推荐并强调“你很会选/这很适合对方”的肯定。",
+            },
+          ],
+          [
+            "ENTJ",
+            {
+              keywords: ["掌控", "高效", "决策快", "重价值"],
+              shoppingStyle: "希望你快速理解需求并给最优方案；偏好高级、辨识度强、能代表身份与品味的款式。",
+              salesAdvice: "用专业与效率赢得信任：快速梳理需求→给最优解+备选；讲“价值点”（设计/工艺/稀缺性/适配场景），推进时直接给决策台阶。",
+            },
+          ],
+        ]);
+
+        const questions = [
+          {
+            id: "Q1",
+            dimension: "EI",
+            prompt: "当客人进店，面对你的打招呼时，他的反应是？",
+            options: [
+              { id: "A", label: "眼神轻快交汇，微笑点头或主动开启寒暄", value: "E" },
+              { id: "B", label: "视线快速移开，低头看柜台，或仅礼貌性轻声回应", value: "I" },
+            ],
+          },
+          {
+            id: "Q2",
+            dimension: "SN",
+            prompt: "在浏览柜台时，客人的视线更多停留在哪里？",
+            options: [
+              { id: "A", label: "铭牌上的价格、克拉数、成色等具体参数", value: "S" },
+              { id: "B", label: "橱窗的陈列美感、明星画报或产品的整体氛围", value: "N" },
+            ],
+          },
+          {
+            id: "Q3",
+            dimension: "SN",
+            prompt: "当客人指向某款珠宝时，他开口询问的第一个问题通常是？",
+            options: [
+              { id: "A", label: "“这款还有现货吗 / 什么材质 / 多长？”", value: "S" },
+              { id: "B", label: "“这个系列有什么寓意 / 设计灵感是什么？”", value: "N" },
+            ],
+          },
+          {
+            id: "Q4",
+            dimension: "EI",
+            prompt: "在你尝试寻找话题（如赞美天气或对方穿搭）时，客人的互动感如何？",
+            options: [
+              { id: "A", label: "愿意分享自己的生活细节或行程，互动自然", value: "E" },
+              { id: "B", label: "反应平淡，仅维持基本礼貌，更希望回到产品本身", value: "I" },
+            ],
+          },
+          {
+            id: "Q5",
+            dimension: "TF",
+            prompt: "试戴过程中，客人评价这款珠宝好不好的标准更像是？",
+            options: [
+              { id: "A", label: "评估保值性、切工技术、或横向对比其他品牌", value: "T" },
+              { id: "B", label: "描述戴上后的“心动感”、自信提升或纪念意义", value: "F" },
+            ],
+          },
+          {
+            id: "Q6",
+            dimension: "TF",
+            prompt: "当你真诚赞美客人佩戴效果很好时，他的反馈是？",
+            options: [
+              { id: "A", label: "冷静理智，更希望听你从专业角度解释为什么好", value: "T" },
+              { id: "B", label: "明显感受到被赞美的愉悦，甚至会开心地照镜子", value: "F" },
+            ],
+          },
+          {
+            id: "Q7",
+            dimension: "JP",
+            prompt: "观察客人在店内的移动路线，哪种更符合？",
+            options: [
+              { id: "A", label: "目标明确，直奔某个柜台，不怎么被其他东西分心", value: "J" },
+              { id: "B", label: "随意漫游，被不同的闪光点吸引，走走停停", value: "P" },
+            ],
+          },
+          {
+            id: "Q8",
+            dimension: "JP",
+            prompt: "到了决策临界点，客人的表现出的节奏感是？",
+            options: [
+              { id: "A", label: "决策干脆，一旦确认就希望立刻走包装结账流程", value: "J" },
+              { id: "B", label: "临门一脚时仍想多对比一下，怕错过更好的选择", value: "P" },
+            ],
+          },
+        ];
+
+        function renderJudgeQuestions() {
+          const $root = el("judgeQuestions");
+          if (!$root) return;
+          $root.innerHTML = "";
+
+          questions.forEach((q, idx) => {
+            const card = document.createElement("div");
+            card.className = "rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4";
+
+            const title = document.createElement("div");
+            title.className = "flex items-start justify-between gap-3";
+            title.innerHTML = `
+              <div class="min-w-0">
+                <div class="text-xs font-semibold text-jade-700">${q.id} · ${q.dimension}</div>
+                <div class="mt-1 text-sm font-semibold text-ink-50">${q.prompt}</div>
+              </div>
+            `;
+
+            const opts = document.createElement("div");
+            opts.className = "mt-3 grid grid-cols-1 gap-2";
+
+            q.options.forEach((opt) => {
+              const label = document.createElement("label");
+              label.className =
+                "flex cursor-pointer items-start gap-3 rounded-xl border border-ink-700/60 bg-ink-900/20 p-3 hover:bg-ink-900/30";
+              label.innerHTML = `
+                <input class="mt-1 accent-jade-400" type="radio" name="q_${q.id}" value="${opt.value}" />
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-ink-50">${opt.label}</div>
+                </div>
+              `;
+              opts.appendChild(label);
+            });
+
+            card.appendChild(title);
+            card.appendChild(opts);
+            $root.appendChild(card);
+          });
+        }
+
+        function getQuestionValue(qid) {
+          const checked = document.querySelector(`input[name="q_${qid}"]:checked`);
+          return checked ? checked.value : "";
+        }
+
+        function clearQuestion(qid) {
+          document.querySelectorAll(`input[name="q_${qid}"]`).forEach((n) => (n.checked = false));
+        }
+
+        function computeMbtiFromQuestions() {
+          const answers = {};
+          for (const q of questions) {
+            const v = getQuestionValue(q.id);
+            if (!v) return null;
+            answers[q.id] = v;
+          }
+
+          const dims = {
+            EI: ["Q1", "Q4"],
+            SN: ["Q2", "Q3"],
+            TF: ["Q5", "Q6"],
+            JP: ["Q7", "Q8"],
+          };
+
+          function pick(dim, aLetter, bLetter, qids) {
+            let a = 0;
+            let b = 0;
+            qids.forEach((id) => {
+              if (answers[id] === aLetter) a += 1;
+              if (answers[id] === bLetter) b += 1;
+            });
+            if (a === b) return answers[qids[0]]; // tie → follow the first question
+            return a > b ? aLetter : bLetter;
+          }
+
+          const EorI = pick("EI", "E", "I", dims.EI);
+          const SorN = pick("SN", "S", "N", dims.SN);
+          const TorF = pick("TF", "T", "F", dims.TF);
+          const JorP = pick("JP", "J", "P", dims.JP);
+
+          return {
+            type: `${EorI}${SorN}${TorF}${JorP}`,
+            answers,
+          };
+        }
+
+        const el = (id) => document.getElementById(id);
+        const $alertBar = el("alertBar");
+        const $alertText = el("alertText");
+        const $alertSubText = el("alertSubText");
+
+        // removed: fullscreen loading overlay; reveal result immediately with subtle gradient fade-in
+
+        function showAlert(msg, subMsg = "", options) {
+          const o = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+          $alertText.textContent = msg;
+          if (subMsg) {
+            $alertSubText.textContent = subMsg;
+            $alertSubText.classList.remove("hidden");
+          } else {
+            $alertSubText.textContent = "";
+            $alertSubText.classList.add("hidden");
+          }
+          $alertBar.classList.toggle("alert-bar--tiffany", o.variant === "tiffany");
+          $alertBar.classList.remove("hidden");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function hideAlert() {
+          $alertBar.classList.add("hidden");
+          $alertBar.classList.remove("alert-bar--tiffany");
+        }
+
+        function normalizeMbti(input) {
+          if (!input) return "";
+          return String(input).trim().toUpperCase();
+        }
+
+        function isValidMbti(type) {
+          const t = normalizeMbti(type);
+          if (t.length !== 4) return false;
+          if (!/^[EI][SN][TF][JP]$/.test(t)) return false;
+          return true;
+        }
+
+        function getRadioValue(name) {
+          const checked = document.querySelector(`input[name="${name}"]:checked`);
+          return checked ? checked.value : "";
+        }
+
+        function clearRadioGroup(name) {
+          document.querySelectorAll(`input[name="${name}"]`).forEach((n) => (n.checked = false));
+        }
+
+        function buildGuestProfileFallback(type) {
+          const t = normalizeMbti(type);
+          const e = t[0],
+            s = t[1],
+            f = t[2],
+            j = t[3];
+
+          const keywords = [];
+          keywords.push(e === "E" ? "外向互动" : "安静观察");
+          keywords.push(s === "S" ? "重细节" : "重整体");
+          keywords.push(f === "T" ? "理性决策" : "情感决策");
+          keywords.push(j === "J" ? "偏确定" : "偏探索");
+
+          const shoppingStyle =
+            (e === "E"
+              ? "更愿意互动交流，能接受你用问题引导、及时回应。"
+              : "更偏安静观察，适合给空间、少打断，多用选择题式提问。") +
+            (s === "S"
+              ? "购物时更关注工艺细节与材质参数。"
+              : "购物时更关注整体款式、设计理念与故事感。");
+
+          const salesAdvice =
+            (f === "T"
+              ? "用结构化信息与对比点说服：参数、工艺、性价比与保值逻辑。"
+              : "先共情与确认场景：强调寓意、纪念与情感价值。") +
+            (j === "J" ? "收敛到 2-3 个清晰推荐并给结论。" : "多给试戴与对比，帮助逐步收敛选择。");
+
+          return { keywords, shoppingStyle, salesAdvice };
+        }
+
+        function getGuestProfile(type) {
+          const t = normalizeMbti(type);
+          if (!isValidMbti(t)) return null;
+          return MBTI_PROFILE_MAP.get(t) || buildGuestProfileFallback(t);
+        }
+
+        function renderGuestProfile(type) {
+          const t = normalizeMbti(type);
+          const profile = getGuestProfile(t);
+          if (!profile) return null;
+
+          const $kw = el("guestKeywords");
+
+          $kw.innerHTML = "";
+          (profile.keywords || []).slice(0, 6).forEach((k) => {
+            const chip = document.createElement("span");
+            chip.className =
+              "rounded-full border border-ink-700/60 bg-ink-900/20 px-2.5 py-1 text-xs font-semibold text-ink-100/90";
+            chip.textContent = k;
+            $kw.appendChild(chip);
+          });
+
+          return profile;
+        }
+
+        /** 维度键与 MBTI 字符串下标对应：0 E/I → E_I，1 S/N → S_N，2 T/F → T_F，3 J/P → J_P */
+        const DIMENSION_LOGIC_KEYS = ["E_I", "S_N", "T_F", "J_P"];
+
+        function getSalesMbtiFromSelect() {
+          const v = normalizeMbti(el("salesMbtiSelect")?.value || "");
+          return v;
+        }
+
+        function getClientClusterKey(clientMbti) {
+          const t = normalizeMbti(clientMbti);
+          if (!isValidMbti(t)) return "";
+          if (t.includes("N") && t.includes("F")) return "NF";
+          if (t.includes("N") && t.includes("T")) return "NT";
+          if (t.includes("S") && t.includes("J")) return "SJ";
+          if (t.includes("S") && t.includes("P")) return "SP";
+          return "";
+        }
+
+        /** Step 1：仅基于客人类型簇的画像（Hidden Sales） */
+        function renderGuestClusterPortrait(clientMbti) {
+          const p = el("guestClusterPortrait");
+          if (!p) return;
+          const ml = window.matchLogic;
+          const k = getClientClusterKey(clientMbti);
+          const portraits = ml?.clientPortraits || ml?.clientportraits || null;
+          if (portraits && k && portraits[k]) {
+            p.textContent = portraits[k];
+            return;
+          }
+          p.textContent = "请确认客人已生成有效四字母类型，以便我们匹配「性格簇」画像。";
+        }
+
+        function initSalesMbtiSelect() {
+          const $sel = el("salesMbtiSelect");
+          if (!$sel || $sel.dataset.inited === "1") return;
+          $sel.dataset.inited = "1";
+
+          // fill options
+          MBTI_TYPES.forEach((t) => {
+            const opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            $sel.appendChild(opt);
+          });
+
+          // hydrate from storage
+          const stored = normalizeMbti(localStorage.getItem(STORAGE_KEYS.caType) || "");
+          if (isValidMbti(stored)) $sel.value = stored;
+          renderSalesProfileSnippet();
+
+          $sel.addEventListener("change", () => {
+            const v = getSalesMbtiFromSelect();
+            if (isValidMbti(v)) {
+              localStorage.setItem(STORAGE_KEYS.caType, v);
+              loadCa();
+            } else {
+              localStorage.removeItem(STORAGE_KEYS.caType);
+              loadCa();
+            }
+            renderSalesProfileSnippet();
+            setChemistrySubmitted(false);
+          });
+
+          // Mobile Safari: sometimes updates fire on input first.
+          $sel.addEventListener("input", () => {
+            renderSalesProfileSnippet();
+            setChemistrySubmitted(false);
+          });
+        }
+
+        function renderSalesProfileSnippet() {
+          const type = getSalesMbtiFromSelect();
+          const $wrap = el("salesProfileText");
+          const $desc = el("salesProfileDesc");
+          const ml = window.matchLogic;
+          if (!$wrap || !$desc) return;
+          if (!ml || !ml.salesProfiles || !isValidMbti(type) || !ml.salesProfiles[type]) {
+            $wrap.classList.add("hidden");
+            $desc.textContent = "";
+            return;
+          }
+          $desc.textContent = ml.salesProfiles[type];
+          $wrap.classList.remove("hidden");
+        }
+
+        function setChemistrySubmitted(submitted) {
+          const $wrap = el("chemistryResultWrap");
+          const $btn = el("btnSubmitChemistry");
+          const $hint = el("chemistryStepHint");
+          const sales = getSalesMbtiFromSelect();
+          const ok = isValidMbti(sales);
+
+          if ($btn) $btn.disabled = !ok;
+
+          if (!submitted) {
+            if ($wrap) $wrap.classList.add("hidden");
+            if ($hint) $hint.textContent = ok ? `已选择 ${sales}，点击提交生成报告。` : "请选择你的 MBTI 后点击提交。";
+            return;
+          }
+
+          if ($wrap) $wrap.classList.remove("hidden");
+          if ($hint) $hint.textContent = `报告已生成（${sales}）。如需调整可修改选择后再次提交。`;
+        }
+
+        function initChemistrySubmitUX() {
+          const $btn = el("btnSubmitChemistry");
+          const $edit = el("btnEditChemistry");
+          if ($btn && $btn.dataset.inited !== "1") {
+            $btn.dataset.inited = "1";
+            $btn.addEventListener("click", () => {
+              const sales = getSalesMbtiFromSelect();
+              const client = normalizeMbti(el("guestTypeText")?.textContent?.trim() || "");
+              if (!isValidMbti(sales) || !isValidMbti(client)) return;
+              renderSalesProfileSnippet();
+              renderChemistryReport();
+              setChemistrySubmitted(true);
+              el("chemistryResultWrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }
+          if ($edit && $edit.dataset.inited !== "1") {
+            $edit.dataset.inited = "1";
+            $edit.addEventListener("click", () => {
+              setChemistrySubmitted(false);
+              el("salesMbtiSelect")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+          }
+        }
+
+        function renderChemistryReport() {
+          const $p = el("practiceAdvice");
+          if (!$p) return;
+          $p.innerHTML = "";
+
+          const clientMbti = normalizeMbti(el("guestTypeText")?.textContent?.trim() || "");
+          const salesMbti = getSalesMbtiFromSelect();
+          const ml = window.matchLogic;
+
+          if (!ml || typeof ml.getPracticeAdvice !== "function") {
+            return;
+          }
+
+          if (!isValidMbti(clientMbti)) {
+            return;
+          }
+
+          if (!isValidMbti(salesMbti)) {
+            return;
+          }
+
+          const res = ml.getPracticeAdvice(salesMbti, clientMbti);
+          if (!res || res.ok === false) {
+            const p = document.createElement("p");
+            p.className = "text-ink-200/80 tiffany-trace";
+            p.textContent = (res && res.summary) || "暂无法生成实操建议。";
+            $p.appendChild(p);
+            return;
+          }
+
+          if (res.summary) {
+            const summary = document.createElement("p");
+            summary.className = "tiffany-trace text-ink-50";
+            summary.textContent = res.summary;
+            $p.appendChild(summary);
+          }
+
+          if (Array.isArray(res.items) && res.items.length > 0) {
+            const list = document.createElement("div");
+            list.className = "mt-3 space-y-3";
+            res.items.forEach((it) => {
+              const card = document.createElement("div");
+              card.className = "rounded-2xl border border-ink-700/60 bg-white/75 p-4";
+
+              const h = document.createElement("div");
+              h.className = "tiffany-serif-title text-xs text-jade-700";
+              h.textContent = it.title || "差异点";
+
+              const s = document.createElement("div");
+              s.className = "mt-2 text-sm tiffany-trace";
+              const sLabel = document.createElement("span");
+              sLabel.className = "text-ink-200/80";
+              sLabel.textContent = "情景：";
+              s.appendChild(sLabel);
+              s.appendChild(document.createTextNode(it.scenario || ""));
+
+              const sol = document.createElement("div");
+              sol.className = "mt-2 text-sm tiffany-trace";
+              const solLabel = document.createElement("span");
+              solLabel.className = "text-ink-200/80";
+              solLabel.textContent = "建议：";
+              sol.appendChild(solLabel);
+              sol.appendChild(document.createTextNode(it.solution || ""));
+
+              card.appendChild(h);
+              card.appendChild(s);
+              card.appendChild(sol);
+              list.appendChild(card);
+            });
+            $p.appendChild(list);
+          }
+        }
+
+        // 复制用的“实操建议”当前未接入（如需可再补）
+
+        function buildScript({ caType, guestType }) {
+          const ca = normalizeMbti(caType);
+          const g = normalizeMbti(guestType);
+
+          const gE = g[0],
+            gS = g[1],
+            gT = g[2],
+            gJ = g[3];
+
+          const needsSpace = gE === "I";
+          const wantsDetails = gS === "S";
+          const wantsEmotion = gT === "F";
+          const wantsClosure = gJ === "J";
+
+          const styleHint = [];
+          if (ca && isValidMbti(ca) && isValidMbti(g)) {
+            if (ca[2] !== g[2]) {
+              styleHint.push(ca[2] === "T" ? "先共情再给结论" : "先给结构再讲感受");
+            }
+            if (ca[0] !== g[0]) {
+              styleHint.push(ca[0] === "E" ? "控制节奏别压迫" : "适度更主动一些");
+            }
+            if (ca[3] !== g[3]) {
+              styleHint.push(ca[3] === "J" ? "别催促，多给试戴时间" : "帮忙收敛选项、给下一步");
+            }
+          }
+
+          const opener = needsSpace
+            ? "欢迎您，您先随意看看；我在旁边不打扰，您看到喜欢的我再给您细讲。"
+            : "欢迎您～今天是给自己挑，还是准备送礼？我可以根据场景帮您快速推荐几款。";
+
+          const intro = wantsDetails
+            ? "这款的亮点在工艺与佩戴体验：镶嵌很稳、细节收边干净，材质参数与证书也都齐全；您可以试戴感受一下上手的贴合度。"
+            : "这款整体气质很干净，线条和比例会显得手更修长；设计灵感偏“日常高级”，很适合通勤/约会都能搭的场景。";
+
+          const qa = wantsEmotion
+            ? "您担心价格/适不适合是很正常的。我们可以先确定“想表达的寓意/场合”，把最贴合的那一款留下来，再看预算怎么最舒服。"
+            : "您问得很专业。价格主要来自材质与工艺成本，我们把关键参数和同价位对比点给您讲清楚，您更容易判断哪款更划算。";
+
+          let close = "";
+          if (wantsClosure) {
+            close = wantsEmotion
+              ? "要不我给您在这两款里做个更贴合场景的建议：如果是纪念/送礼，这款寓意更完整；您觉得把它作为今天的“主选”可以吗？"
+              : "我建议您在这两款里直接定一款：按您刚才的需求与预算，这款在参数与耐用度上更占优；我现在帮您把尺码/现货确认一下？";
+          } else {
+            close = wantsEmotion
+              ? "我们不着急下决定，您可以再多试两款。我先帮您把最贴合寓意的 2-3 款留在托盘里，您慢慢感受哪一款更“对”。"
+              : "您可以再对比两款关键点：材质、工艺与预算。我把差异写得很清楚，您带着结论去试戴，最后会更好选。";
+          }
+
+          const meta =
+            styleHint.length > 0
+              ? `风格提醒：${styleHint.join("、")}。`
+              : wantsEmotion
+                ? "风格提醒：多用共情与场景表达。"
+                : "风格提醒：多用结构化信息与对比点。";
+
+          return {
+            meta,
+            greeting: opener,
+            intro,
+            qa,
+            close,
+          };
+        }
+
+        function readHistory() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEYS.history);
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function writeHistory(list) {
+          localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(list));
+        }
+
+        function addHistory(entry) {
+          const list = readHistory();
+          list.unshift(entry);
+          if (list.length > 60) list.length = 60;
+          writeHistory(list);
+        }
+
+        function formatTime(ts) {
+          const d = new Date(ts);
+          const pad = (n) => String(n).padStart(2, "0");
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        async function copyText(text) {
+          const t = String(text || "");
+          if (!t) return false;
+          try {
+            await navigator.clipboard.writeText(t);
+            return true;
+          } catch {
+            const ta = document.createElement("textarea");
+            ta.value = t;
+            ta.style.position = "fixed";
+            ta.style.left = "-9999px";
+            ta.setAttribute("readonly", "true");
+            document.body.appendChild(ta);
+            ta.select();
+            ta.setSelectionRange(0, ta.value.length);
+            const ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            return ok;
+          }
+        }
+
+        function setActiveTab(tab) {
+          hideAlert();
+          document.querySelectorAll(".tabBtn").forEach((btn) => {
+            const isActive = btn.dataset.tab === tab;
+            btn.classList.toggle("bg-ink-900/40", isActive);
+            btn.classList.toggle("text-ink-50", isActive);
+            btn.classList.toggle("shadow-card", isActive);
+            btn.classList.toggle("bg-ink-900/20", !isActive);
+            btn.classList.toggle("text-ink-100/90", !isActive);
+          });
+          document.querySelectorAll(".tabPanel").forEach((panel) => panel.classList.add("hidden"));
+          el(`tab-${tab}`).classList.remove("hidden");
+          if (tab === "history") renderHistory();
+        }
+
+        function initTabs() {
+          document.querySelectorAll(".tabBtn").forEach((btn) => {
+            btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+          });
+        }
+
+        function initCaSelect() {
+          const $sel = el("caTypeSelect");
+          MBTI_TYPES.forEach((t) => {
+            const opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            $sel.appendChild(opt);
+          });
+        }
+
+        function loadCa() {
+          const saved = normalizeMbti(localStorage.getItem(STORAGE_KEYS.caType) || "");
+          const ok = isValidMbti(saved);
+          el("caSavedRow").classList.toggle("hidden", !ok);
+          el("caInputRow").classList.toggle("hidden", ok);
+          el("caTypeSaved").textContent = ok ? saved : "";
+          if (!ok) el("caTypeSelect").value = "";
+        }
+
+        function saveCa(type) {
+          const t = normalizeMbti(type);
+          if (!isValidMbti(t)) {
+            showAlert("请输入正确的4字母MBTI类型（如ESTJ）");
+            return false;
+          }
+          localStorage.setItem(STORAGE_KEYS.caType, t);
+          loadCa();
+          hideAlert();
+          return true;
+        }
+
+        function clearCa() {
+          localStorage.removeItem(STORAGE_KEYS.caType);
+          loadCa();
+        }
+
+        function getLastGuestType() {
+          const t = normalizeMbti(localStorage.getItem(STORAGE_KEYS.lastGuestType) || "");
+          return isValidMbti(t) ? t : "";
+        }
+
+        function setLastGuestType(t) {
+          const v = normalizeMbti(t);
+          if (isValidMbti(v)) localStorage.setItem(STORAGE_KEYS.lastGuestType, v);
+        }
+
+        function renderHistory() {
+          const list = readHistory();
+          const $list = el("historyList");
+          $list.innerHTML = "";
+          el("historyEmpty").classList.toggle("hidden", list.length !== 0);
+          if (list.length === 0) return;
+
+          list.forEach((item, idx) => {
+            const wrap = document.createElement("div");
+            wrap.className = "rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card";
+
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "w-full text-left";
+
+            const title = document.createElement("div");
+            title.className = "flex items-center justify-between gap-3";
+
+            const left = document.createElement("div");
+            left.className = "min-w-0";
+            left.innerHTML = `
+              <div class="text-xs text-ink-200/80">${formatTime(item.ts || Date.now())}</div>
+              <div class="mt-1 text-sm font-semibold">客人 <span class="tracking-wide">${item.guestType || "-"}</span> · CA <span class="tracking-wide">${item.caType || "-"}</span></div>
+            `;
+
+            const indicator = document.createElement("div");
+            indicator.className = "text-xs text-ink-200/80";
+            indicator.dataset.indicator = "true";
+            indicator.textContent = "点开";
+
+            title.appendChild(left);
+            title.appendChild(indicator);
+
+            const body = document.createElement("div");
+            body.className = "mt-3 hidden space-y-3";
+
+            const interpret = document.createElement("div");
+            interpret.className = "rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4";
+            const profile = item.guestProfile || null;
+            const legacyInterpretation = item.guestInterpretation || "";
+
+            const kw = Array.isArray(profile?.keywords) ? profile.keywords : [];
+            const style = profile?.shoppingStyle || "";
+            const advice = profile?.salesAdvice || "";
+
+            interpret.innerHTML = `
+              <div class="text-xs font-semibold text-jade-700">客人解读</div>
+              ${
+                profile
+                  ? `
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      ${kw
+                        .slice(0, 6)
+                        .map(
+                          (k) =>
+                            `<span class="rounded-full border border-ink-700/60 bg-ink-900/20 px-2.5 py-1 text-xs font-semibold text-ink-100/90">${String(k)}</span>`
+                        )
+                        .join("")}
+                    </div>
+                    <div class="mt-3 space-y-2 text-sm leading-relaxed">
+                      <div><span class="text-ink-200/80">购物风格：</span>${style || "-"}</div>
+                      <div><span class="text-ink-200/80">话术建议：</span>${advice || "-"}</div>
+                    </div>
+                  `
+                  : `<div class="mt-2 text-sm leading-relaxed">${legacyInterpretation || "-"}</div>`
+              }
+            `;
+
+            const scripts = document.createElement("div");
+            scripts.className = "rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4";
+            const s = item.scripts || {};
+            const follow = String(s.followup || s.greeting || "-").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const hasLegacy =
+              (s.intro || s.qa || s.close) &&
+              String(s.intro || "") &&
+              !String(s.intro || "").includes("结构：开头");
+            const legacyRows = hasLegacy
+              ? `<div class="mt-3 space-y-1 text-xs text-ink-200/80">旧版分段</div>
+                 <div class="text-sm leading-relaxed">款式介绍：${String(s.intro || "-").replace(/</g, "&lt;")}</div>
+                 <div class="text-sm leading-relaxed">疑问解答：${String(s.qa || "-").replace(/</g, "&lt;")}</div>
+                 <div class="text-sm leading-relaxed">促成成交：${String(s.close || "-").replace(/</g, "&lt;")}</div>`
+              : "";
+            scripts.innerHTML = `
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-xs font-semibold text-jade-700">跟进话术</div>
+                <button data-action="copy" class="rounded-xl border border-ink-700/60 bg-ink-900/20 px-3 py-2 text-xs font-semibold text-ink-50 hover:bg-ink-900/40 active:scale-[0.99]" type="button">复制</button>
+              </div>
+              <div class="mt-3 text-sm leading-relaxed">${follow}</div>
+              ${legacyRows}
+            `;
+
+            scripts.querySelector('[data-action="copy"]').addEventListener("click", async (e) => {
+              e.stopPropagation();
+              const p = item.guestProfile || null;
+              const pText = p
+                ? [
+                    `关键词：${Array.isArray(p.keywords) ? p.keywords.join("、") : "-"}`,
+                    `购物风格：${p.shoppingStyle || "-"}`,
+                    `话术建议：${p.salesAdvice || "-"}`,
+                    "",
+                  ].join("\n")
+                : "";
+              const followOnly = s.followup || s.greeting || "";
+              const txt = [
+                `客人：${item.guestType || "-"}`,
+                `CA：${item.caType || "-"}`,
+                "",
+                pText,
+                followOnly ? `跟进话术：\n${followOnly}` : "",
+              ].join("\n");
+              const ok = await copyText(txt);
+              showAlert(ok ? "已复制到剪贴板" : "复制失败，请手动选择复制");
+            });
+
+            body.appendChild(interpret);
+            body.appendChild(scripts);
+
+            head.appendChild(title);
+            wrap.appendChild(head);
+            wrap.appendChild(body);
+
+            head.addEventListener("click", () => {
+              const open = !body.classList.contains("hidden");
+              body.classList.toggle("hidden", open);
+              indicator.textContent = open ? "点开" : "收起";
+            });
+
+            $list.appendChild(wrap);
+          });
+        }
+
+        // Judge module
+        function initJudge() {
+          el("btnGenerateGuest").addEventListener("click", async () => {
+            hideAlert();
+            const computed = computeMbtiFromQuestions();
+            if (!computed) {
+              showAlert("请完善客人行为特征勾选", "请完成 8 道导购视角问题后再生成。");
+              return;
+            }
+            const type = computed.type;
+            // Reveal result immediately (no loading screen)
+            el("guestResultCard").classList.add("hidden");
+
+            el("guestTypeText").textContent = type;
+            const profile = renderGuestProfile(type);
+            renderGuestClusterPortrait(type);
+            initSalesMbtiSelect();
+            initChemistrySubmitUX();
+            setChemistrySubmitted(false);
+
+            el("guestResultCard").classList.remove("hidden");
+            el("guestResultCard").classList.add("fade-in-soft");
+            el("guestResultCard").classList.add("result-reveal");
+            setTimeout(() => el("guestResultCard").classList.remove("fade-in-soft"), 600);
+            setTimeout(() => el("guestResultCard").classList.remove("result-reveal"), 800);
+
+            // Hide questions after result is generated
+            el("judgeFormCard").classList.add("hidden");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+
+            setLastGuestType(type);
+
+            const smFromUi = getSalesMbtiFromSelect();
+            const caType = isValidMbti(smFromUi) ? smFromUi : "";
+            const scripts = isValidMbti(caType) ? buildScript({ caType, guestType: type }) : null;
+
+            addHistory({
+              ts: Date.now(),
+              caType: isValidMbti(caType) ? caType : "",
+              guestType: type,
+              guestProfile: profile,
+              features: computed.answers,
+              scripts,
+            });
+          });
+
+          el("btnClearJudge").addEventListener("click", () => {
+            hideAlert();
+            questions.forEach((q) => clearQuestion(q.id));
+            el("guestResultCard").classList.add("hidden");
+            el("judgeFormCard").classList.remove("hidden");
+          });
+
+          el("btnRejudge").addEventListener("click", () => {
+            hideAlert();
+            el("guestResultCard").classList.add("hidden");
+            el("judgeFormCard").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+
+          el("btnCopyGuestType").addEventListener("click", async () => {
+            const type = el("guestTypeText").textContent.trim();
+            const p = getGuestProfile(type);
+            const txt = p
+              ? [
+                  `客人 MBTI：${type}`,
+                  `关键词：${Array.isArray(p.keywords) ? p.keywords.join("、") : "-"}`,
+                  `蒂芙尼店内购物风格：${p.shoppingStyle || "-"}`,
+                  `销售话术建议：${p.salesAdvice || "-"}`,
+                ].join("\n")
+              : `客人 MBTI：${type}`;
+            const ok = await copyText(txt);
+            showAlert(ok ? "已复制到剪贴板" : "复制失败，请手动选择复制");
+          });
+
+          el("btnCopyGuestFull").addEventListener("click", async () => {
+            const type = el("guestTypeText").textContent.trim();
+            const p = getGuestProfile(type);
+            const parts = p
+              ? [
+                  `客人 MBTI：${type}`,
+                  "",
+                  `性格关键词：${Array.isArray(p.keywords) ? p.keywords.join("、") : "-"}`,
+                ]
+              : [`客人 MBTI：${type}`];
+            const txt = parts.join("\n");
+            const ok = await copyText(txt);
+            showAlert(ok ? "已复制到剪贴板" : "复制失败，请手动选择复制");
+          });
+
+          el("btnUseForMatch").addEventListener("click", () => {
+            const type = el("guestTypeText").textContent.trim();
+            if (!isValidMbti(type)) return;
+            el("guestTypeInput").value = type;
+            setActiveTab("match");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+        }
+
+        // Match module — 与 followuplogic.js + followup.js 本地组句
+        function lineMbtiPair(guestType, caType) {
+          return `客人 ${guestType} 型 · 导购 ${caType} 型`;
+        }
+
+        function runFollowUpCompose({ rephrase, addToHistory }) {
+          if (rephrase && el("scriptCard")?.classList?.contains("hidden")) {
+            showAlert("请先生成专属话术", "生成后可用「换个说法」多次试不同语气。");
+            return;
+          }
+          const caType = normalizeMbti(localStorage.getItem(STORAGE_KEYS.caType) || "");
+          if (!isValidMbti(caType)) {
+            showAlert("请先输入您的MBTI类型", "");
+            return;
+          }
+          const guestType = normalizeMbti(el("guestTypeInput").value);
+          if (!isValidMbti(guestType)) {
+            showAlert("请输入正确的4字母MBTI类型（如ESTJ）", "");
+            return;
+          }
+          const name = (el("clientNameInput")?.value || "您好").trim() || "您好";
+          if (typeof window.composeFollowUp !== "function") {
+            showAlert("未加载 followup 模块", "请确认已引入 followuplogic.js 与 followup.js。");
+            return;
+          }
+          const pairLine = lineMbtiPair(guestType, caType);
+          if (!rephrase) {
+            el("scriptCard").classList.remove("hidden");
+            el("scriptMeta").textContent = pairLine + " · 正在生成…";
+            el("sGreeting").textContent = "";
+            if (el("wxBubbleText")) el("wxBubbleText").textContent = "正在生成…";
+            el("btnRephraseScript").disabled = true;
+          } else {
+            if (el("wxBubbleText")) el("wxBubbleText").textContent = "换一版…";
+            el("btnRephraseScript").disabled = true;
+          }
+          let composed;
+          try {
+            composed = window.composeFollowUp(name, guestType, caType, { rephrase: !!rephrase });
+          } catch (e) {
+            el("scriptMeta").textContent = pairLine + " · 失败";
+            if (el("wxBubbleText")) el("wxBubbleText").textContent = "—";
+            el("btnRephraseScript").disabled = true;
+            showAlert("生成失败", String(e?.message || e || "未知错误"));
+            return;
+          }
+          const finalText = String(composed.fullText || "").replace(/\s+/g, " ").trim();
+          el("scriptMeta").textContent = composed.warning ? pairLine + " · 已用兜底组合" : pairLine;
+          el("sGreeting").textContent = finalText;
+          if (el("wxBubbleText")) el("wxBubbleText").textContent = finalText;
+          if (!rephrase) {
+            if (addToHistory) {
+              addHistory({
+                ts: Date.now(),
+                caType,
+                guestType,
+                guestProfile: getGuestProfile(guestType),
+                features: null,
+                scripts: { followup: finalText, greeting: finalText, intro: "", qa: "", close: "" },
+              });
+            }
+            setLastGuestType(guestType);
+          }
+          el("btnRephraseScript").disabled = false;
+        }
+
+        function initMatch() {
+          el("btnSaveCa").addEventListener("click", () => {
+            const v = el("caTypeSelect").value;
+            saveCa(v);
+          });
+
+          el("btnEditCa").addEventListener("click", () => {
+            hideAlert();
+            el("caSavedRow").classList.add("hidden");
+            el("caInputRow").classList.remove("hidden");
+          });
+
+          el("btnClearCa").addEventListener("click", () => {
+            hideAlert();
+            clearCa();
+          });
+
+          el("btnUseLastGuest").addEventListener("click", () => {
+            hideAlert();
+            const last = getLastGuestType();
+            if (!last) {
+              showAlert("暂无可用的客人MBTI", "请先在“客人判断”生成一次，或手动输入。");
+              return;
+            }
+            el("guestTypeInput").value = last;
+          });
+
+          el("guestTypeInput").addEventListener("input", (e) => {
+            const v = normalizeMbti(e.target.value);
+            e.target.value = v.slice(0, 4);
+          });
+
+          el("btnGenerateScript").textContent = "生成专属话术";
+          el("btnRephraseScript").disabled = true;
+          el("btnGenerateScript").addEventListener("click", () => {
+            hideAlert();
+            runFollowUpCompose({ rephrase: false, addToHistory: true });
+          });
+          el("btnRephraseScript").addEventListener("click", () => {
+            hideAlert();
+            runFollowUpCompose({ rephrase: true, addToHistory: false });
+          });
+
+          el("btnCopyAllScripts").addEventListener("click", async () => {
+            const fromBubble = el("wxBubbleText")?.textContent?.trim() || "";
+            const fromLegacy = el("sGreeting")?.textContent?.trim() || "";
+            const txt = fromBubble && fromBubble !== "—" && fromBubble !== "正在生成…" && fromBubble !== "换一版…" ? fromBubble : fromLegacy;
+            const ok = await copyText(txt);
+            if (ok) {
+              showAlert("已复制到剪贴板", "可粘贴到微信，直接发客人。", { variant: "tiffany" });
+            } else {
+              showAlert("复制失败，请手动选择复制", "");
+            }
+          });
+        }
+
+        function initHistory() {
+          el("btnClearHistory").addEventListener("click", () => {
+            hideAlert();
+            localStorage.removeItem(STORAGE_KEYS.history);
+            renderHistory();
+            showAlert("历史已清空");
+          });
+        }
+
+        function initGlobal() {
+          el("btnResetAll").addEventListener("click", () => {
+            localStorage.removeItem(STORAGE_KEYS.caType);
+            localStorage.removeItem(STORAGE_KEYS.lastGuestType);
+            localStorage.removeItem(STORAGE_KEYS.history);
+            questions.forEach((q) => clearQuestion(q.id));
+            el("guestResultCard").classList.add("hidden");
+            el("scriptCard").classList.add("hidden");
+            if (el("btnRephraseScript")) el("btnRephraseScript").disabled = true;
+            el("guestTypeInput").value = "";
+            loadCa();
+            renderHistory();
+            showAlert("已清空本地数据");
+          });
+        }
+
+        function bootstrap() {
+          initTabs();
+          initCaSelect();
+          loadCa();
+          renderJudgeQuestions();
+          initSalesMbtiSelect();
+          initChemistrySubmitUX();
+          setChemistrySubmitted(false);
+          initJudge();
+          initMatch();
+          initHistory();
+          initGlobal();
+          setActiveTab("judge");
+
+          if (document.documentElement.getAttribute("data-no-tailwind") === "1") {
+            showAlert("已启用离线兜底样式", "当前网络可能拦截了 Tailwind CDN，不影响功能使用。");
+          }
+        }
+
+        bootstrap();
+      })();
+    </script>
+  </body>
+
+  <!--
+    手动验证用例：
+    - 当 8 道题（Q1~Q8）全部选择 A 时，value 分别为：
+      Q1=E, Q2=S, Q3=S, Q4=E, Q5=T, Q6=T, Q7=J, Q8=J
+    - 按当前逻辑：每个维度 2 题取多数票（平票按该维度第一题）
+    - 因此最终输出 MBTI 类型应为：ESTJ
+  -->
+</html>
