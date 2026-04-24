@@ -21,87 +21,14 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // 如果门店网络拦截 CDN，Tailwind 可能加载失败：启用本地兜底样式，避免页面“朴素无样式”。
-      (function () {
-        const markNoTailwind = () => document.documentElement.setAttribute("data-no-tailwind", "1");
-
-        // 2 秒内未加载成功则降级
-        const timer = setTimeout(markNoTailwind, 2000);
-
-        window.addEventListener(
-          "load",
-          () => {
-            // 用一个真实的 Tailwind utility 探测是否生效
-            const probe = document.createElement("div");
-            probe.className = "bg-jade-500";
-            probe.style.position = "fixed";
-            probe.style.left = "-9999px";
-            document.body.appendChild(probe);
-
-            const bg = getComputedStyle(probe).backgroundColor;
-            document.body.removeChild(probe);
-
-            clearTimeout(timer);
-            // Tailwind 生效时通常不是透明/空值
-            if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") markNoTailwind();
-          },
-          { once: true }
-        );
-      })();
-    </script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              // Tiffany Blue 系列（保留 jade 变量名，避免大范围改 class）
-              jade: {
-                50: "#effcfa",
-                100: "#d6f6f2",
-                200: "#aeece4",
-                300: "#81d8d0",
-                400: "#4fc2ba",
-                500: "#2aa7a1",
-                600: "#1f8682",
-                700: "#1b6b69",
-                800: "#165554",
-                900: "#0f3c3c",
-              },
-              ink: {
-                50: "#f7f8fb",
-                100: "#eef0f6",
-                200: "#d8dce9",
-                300: "#b6bdd5",
-                400: "#8b95b7",
-                500: "#68749e",
-                600: "#515b82",
-                700: "#414966",
-                800: "#2b3147",
-                900: "#171a2a",
-              },
-              gold: {
-                50: "#fffbeb",
-                100: "#fef3c7",
-                200: "#fde68a",
-                300: "#fcd34d",
-                400: "#fbbf24",
-                500: "#f59e0b",
-                600: "#d97706",
-                700: "#b45309",
-                800: "#92400e",
-                900: "#78350f",
-              },
-            },
-            boxShadow: {
-              card: "0 10px 25px -15px rgba(17, 24, 39, 0.35)",
-            },
-          },
-        },
-      };
-    </script>
+    <link rel="stylesheet" href="./tailwind.css" />
     <style>
+      /* 不依赖 tailwind.css：无此规则时 .hidden 无效，首屏会永远卡在全屏引导层上 */
+      .hidden,
+      [hidden] {
+        display: none !important;
+      }
+
       :root {
         color-scheme: light;
         --glass-bg: rgba(255, 255, 255, 0.72);
@@ -668,8 +595,9 @@
       .landing-overlay {
         position: fixed;
         inset: 0;
-        z-index: 60;
+        z-index: 100;
         display: flex;
+        pointer-events: auto;
         align-items: center;
         justify-content: center;
         padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
@@ -714,6 +642,9 @@
         letter-spacing: 0.04em;
         padding: 0.9rem 1rem;
         box-shadow: 0 18px 40px rgba(42, 167, 161, 0.18);
+        pointer-events: auto;
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(42, 167, 161, 0.35);
       }
       .landing-cta:active {
         transform: scale(0.99);
@@ -765,7 +696,14 @@
         <div class="landing-desc">
           第一次接待的客人不知道怎么继续跟进？只要通过这个小应用及时记录客人在店内的反应，就帮你生成 MBTI 化学反应，解决你的客人跟进苦恼。
         </div>
-        <button id="btnEnterApp" class="landing-cta touch-pad" type="button">进入小应用</button>
+        <button
+          id="btnEnterApp"
+          class="landing-cta touch-pad"
+          type="button"
+          onclick="window.mbtiEnterApp && window.mbtiEnterApp()"
+        >
+          进入小应用
+        </button>
         <div class="landing-mini">提示：内容仅保存在本机浏览器，可随时清空。</div>
       </div>
     </section>
@@ -825,7 +763,7 @@
           <div id="judgeFormCard" class="rounded-2xl border border-ink-700/60 bg-ink-900/30 p-4 shadow-card">
             <div class="flex items-center justify-between gap-3">
               <div class="text-sm font-semibold">客人 MBTI 判断</div>
-              <div class="text-xs text-ink-200/80">6 题快速判断</div>
+              <div class="text-xs text-ink-200/80">6 题 · 首次购买/品牌新客</div>
             </div>
             <div class="mt-4 space-y-4">
               <div id="judgeQuestions" class="space-y-4"></div>
@@ -1151,10 +1089,12 @@
     </div>
 
     <!-- 销售×客人性格匹配逻辑（见 matchLogic.js → window.matchLogic） -->
-    <script src="matchLogic.js"></script>
+    <script src="./matchLogic.js"></script>
+    <!-- 6 题计分、选项文案、接待策略 getTypeDescription：mbti_quiz.js -->
+    <script src="./mbti_quiz.js"></script>
     <!-- followuplogic.js → window.followUpLogic；followup.js → composeFollowUp / generateFollowUp -->
-    <script src="followuplogic.js"></script>
-    <script src="followup.js"></script>
+    <script src="./followuplogic.js"></script>
+    <script src="./followup.js"></script>
     <script>
       (function () {
         /* matchLogic: 主逻辑顶部依赖 matchLogic.js 将对象挂到 window.matchLogic */
@@ -1164,9 +1104,78 @@
           lastGuestType: "mbtiOutreach.lastGuestType",
           history: "mbtiOutreach.history",
         };
-        const UX_KEYS = {
-          landingSeen: "mbtiOutreach.ux.landingSeen",
-        };
+        const el = (id) => document.getElementById(id);
+
+        /** 必须始终成功绑定；介绍页不写入 localStorage，避免刷新后不再出现 */
+        function initLanding() {
+          const $landing = el("landingOverlay");
+          const $app = el("appShell");
+          const $enter = el("btnEnterApp");
+
+          let lastOpen = 0;
+          function openApp() {
+            const now = Date.now();
+            if (now - lastOpen < 400) return;
+            lastOpen = now;
+            /* 不依赖任何外链 CSS：用内联 + hidden 双保险，避免全屏层挡死点击 */
+            if ($landing) {
+              $landing.classList.add("hidden");
+              $landing.setAttribute("hidden", "");
+              $landing.setAttribute("aria-hidden", "true");
+              $landing.style.setProperty("display", "none", "important");
+              $landing.style.setProperty("visibility", "hidden", "important");
+              $landing.style.setProperty("pointer-events", "none", "important");
+            }
+            if ($app) {
+              $app.classList.remove("hidden");
+              $app.removeAttribute("hidden");
+              $app.setAttribute("aria-hidden", "false");
+              $app.style.removeProperty("display");
+              $app.style.removeProperty("visibility");
+              $app.style.removeProperty("pointer-events");
+            }
+            try {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } catch {
+              window.scrollTo(0, 0);
+            }
+          }
+
+          if (typeof window !== "undefined") {
+            window.mbtiEnterApp = openApp;
+          }
+
+          if ($enter) {
+            $enter.addEventListener("click", openApp, { passive: true });
+            /* 部分微信 WebView 上 touch 后 click 被吞，补充 touchend；400ms 节流与 click 并存 */
+            $enter.addEventListener(
+              "touchend",
+              (ev) => {
+                if (ev.target === $enter || $enter.contains(ev.target)) {
+                  openApp();
+                }
+              },
+              { passive: true }
+            );
+          }
+        }
+
+        /** 每次进入页面都先显示介绍层；进入主界面后点「进入小应用」 */
+        function applyLandingShellVisibility() {
+          const $landing = el("landingOverlay");
+          const $app = el("appShell");
+          if (!$landing || !$app) return;
+          $landing.classList.remove("hidden");
+          $landing.removeAttribute("hidden");
+          $landing.setAttribute("aria-hidden", "false");
+          $landing.style.removeProperty("display");
+          $landing.style.removeProperty("visibility");
+          $landing.style.removeProperty("pointer-events");
+          $app.classList.add("hidden");
+          $app.setAttribute("hidden", "");
+          $app.setAttribute("aria-hidden", "true");
+          $app.style.setProperty("display", "none", "important");
+        }
 
         const MBTI_TYPES = [
           "ISTJ",
@@ -1318,177 +1327,22 @@
           ],
         ]);
 
-        const questions = [
-          {
-            id: 1,
-            text: "进店后的空间行为",
-            description: "客人进入店铺后，您观察到她/他：",
-            options: [
-              {
-                label: "A",
-                text: "径直走向目标展柜（如钻石区/彩宝区），目的明确",
-                scores: { E: 0, I: 2, S: 1, N: 0, T: 1, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "B",
-                text: "缓步浏览，目光在多个展柜间游走，偶尔驻足",
-                scores: { E: 1, I: 1, S: 0, N: 2, T: 0, F: 1, J: 0, P: 2 },
-              },
-              {
-                label: "C",
-                text: "先环顾店铺整体环境、灯光、陈列布局，再走近展柜",
-                scores: { E: 0, I: 2, S: 0, N: 2, T: 0, F: 0, J: 1, P: 1 },
-              },
-              {
-                label: "D",
-                text: "站在门口附近，等待顾问主动上前引导",
-                scores: { E: 0, I: 2, S: 1, N: 0, T: 0, F: 1, J: 0, P: 2 },
-              },
-            ],
-          },
-          {
-            id: 2,
-            text: "对顾问问候的反应",
-            description: "您问候后，客人：",
-            options: [
-              {
-                label: "A",
-                text: "直接回答具体需求，如“我想看婚戒/某品牌系列”",
-                scores: { E: 2, I: 0, S: 2, N: 0, T: 1, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "B",
-                text: "微笑说“我先看看”，但眼神仍在寻找交流机会",
-                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "C",
-                text: "简短回应“看看”，随即低头专注看展柜，不延伸话题",
-                scores: { E: 0, I: 2, S: 2, N: 0, T: 1, F: 0, J: 1, P: 1 },
-              },
-              {
-                label: "D",
-                text: "反问“你们有什么推荐？最近有什么新款？”",
-                scores: { E: 2, I: 0, S: 0, N: 2, T: 0, F: 1, J: 0, P: 2 },
-              },
-            ],
-          },
-          {
-            id: 3,
-            text: "试戴时的互动方式",
-            description: "当顾问取出珠宝请客人试戴时：",
-            options: [
-              {
-                label: "A",
-                text: "立刻试戴，边戴边问“这个适合我吗？你觉得呢？”",
-                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "B",
-                text: "先仔细观察工艺、镶嵌、背面细节，再决定是否试戴",
-                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "C",
-                text: "试戴后立刻掏出手机自拍，或拍照发给朋友",
-                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "D",
-                text: "试戴后站在镜前静止观察许久，表情内敛，很少主动评价",
-                scores: { E: 0, I: 2, S: 1, N: 1, T: 1, F: 1, J: 1, P: 1 },
-              },
-            ],
-          },
-          {
-            id: 4,
-            text: "对珠宝细节的关注点",
-            description: "客人在看货时，反复询问或查看的是：",
-            options: [
-              {
-                label: "A",
-                text: "价格、折扣、保养政策、售后条款",
-                scores: { E: 0, I: 1, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "B",
-                text: "设计灵感、宝石产地故事、品牌历史、佩戴场合建议",
-                scores: { E: 1, I: 1, S: 0, N: 2, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "C",
-                text: "4C参数、证书编号、金属纯度、工艺技术细节",
-                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "D",
-                text: "是否限量、是否有人佩戴过、是否容易撞款",
-                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 1, P: 1 },
-              },
-            ],
-          },
-          {
-            id: 5,
-            text: "做决策时的状态",
-            description: "当客人在两件珠宝之间犹豫时：",
-            options: [
-              {
-                label: "A",
-                text: "主动征求您的意见：“如果是你，会选哪个？”",
-                scores: { E: 2, I: 0, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "B",
-                text: "拿出手机列对比清单，或反复翻看参数卡片",
-                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "C",
-                text: "闭眼想象佩戴场景，或问“哪条更能提升气场？”",
-                scores: { E: 0, I: 1, S: 0, N: 2, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "D",
-                text: "说“我再想想”，退后一步沉默观察，不急于决定",
-                scores: { E: 0, I: 2, S: 1, N: 1, T: 1, F: 0, J: 0, P: 2 },
-              },
-            ],
-          },
-          {
-            id: 6,
-            text: "离店前的行为信号",
-            description: "接待结束时，客人：",
-            options: [
-              {
-                label: "A",
-                text: "主动加微信/要名片，说“回去考虑，有活动通知我”",
-                scores: { E: 2, I: 0, S: 1, N: 1, T: 1, F: 1, J: 1, P: 1 },
-              },
-              {
-                label: "B",
-                text: "仔细收好证书、包装，确认保修卡后平静离开",
-                scores: { E: 0, I: 2, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-              {
-                label: "C",
-                text: "临出门前又折返再看一眼某件珠宝，流露不舍",
-                scores: { E: 1, I: 1, S: 1, N: 1, T: 0, F: 2, J: 0, P: 2 },
-              },
-              {
-                label: "D",
-                text: "直接问“现在买有什么赠品？能否今天预留？”",
-                scores: { E: 2, I: 0, S: 2, N: 0, T: 2, F: 0, J: 2, P: 0 },
-              },
-            ],
-          },
-        ];
+        function getJudgeQuestions() {
+          const mq = window.mbtiQuiz;
+          return mq && Array.isArray(mq.questions) ? mq.questions : [];
+        }
 
         function renderJudgeQuestions() {
           const $root = el("judgeQuestions");
           if (!$root) return;
           $root.innerHTML = "";
+          if (getJudgeQuestions().length === 0) {
+            $root.innerHTML =
+              '<p class="text-sm text-ink-200/80">题目未加载，请检查 <code class="text-ink-100/90">mbti_quiz.js</code> 是否可访问后刷新页面。</p>';
+            return;
+          }
 
-          questions.forEach((q, idx) => {
+          getJudgeQuestions().forEach((q, idx) => {
             const card = document.createElement("div");
             card.className = "rounded-2xl border border-ink-700/60 bg-ink-900/20 p-4";
 
@@ -1534,61 +1388,32 @@
         }
 
         function computeMbtiFromQuestions() {
-          // answers: { [qid:number]: "A"|"B"|"C"|"D" }
-          const answers = {};
-          for (const q of questions) {
+          const mbti = window.mbtiQuiz;
+          if (!mbti || typeof mbti.calculateMBTI !== "function") return null;
+          const qs = getJudgeQuestions();
+          if (qs.length === 0) return null;
+
+          const labels = [];
+          for (const q of qs) {
             const v = getQuestionValue(q.id);
             if (!v) return null;
-            answers[q.id] = v;
+            labels.push(v);
           }
 
-          const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
-          Object.entries(answers).forEach(([qid, label]) => {
-            const q = questions.find((x) => String(x.id) === String(qid));
-            const opt = q?.options?.find((o) => o.label === label) || null;
-            if (!opt || !opt.scores) return;
-            Object.entries(opt.scores).forEach(([dim, sc]) => {
-              if (scores[dim] == null) return;
-              scores[dim] += Number(sc) || 0;
-            });
-          });
-
-          const details = {
-            EI: scores.E >= scores.I ? "E" : "I",
-            EI_score: scores.E >= scores.I ? scores.E : scores.I,
-            EI_diff: Math.abs(scores.E - scores.I),
-            SN: scores.S >= scores.N ? "S" : "N",
-            SN_score: scores.S >= scores.N ? scores.S : scores.N,
-            SN_diff: Math.abs(scores.S - scores.N),
-            TF: scores.T >= scores.F ? "T" : "F",
-            TF_score: scores.T >= scores.F ? scores.T : scores.F,
-            TF_diff: Math.abs(scores.T - scores.F),
-            JP: scores.J >= scores.P ? "J" : "P",
-            JP_score: scores.J >= scores.P ? scores.J : scores.P,
-            JP_diff: Math.abs(scores.J - scores.P),
-          };
-
-          const type = details.EI + details.SN + details.TF + details.JP;
-          const totalDiff = details.EI_diff + details.SN_diff + details.TF_diff + details.JP_diff;
-          const confidence = totalDiff >= 8 ? "高" : totalDiff >= 5 ? "中" : "低";
-          const diffs = [
-            { dim: "EI", diff: details.EI_diff, type: details.EI },
-            { dim: "SN", diff: details.SN_diff, type: details.SN },
-            { dim: "TF", diff: details.TF_diff, type: details.TF },
-            { dim: "JP", diff: details.JP_diff, type: details.JP },
-          ].sort((a, b) => b.diff - a.diff);
+          const result = mbti.calculateMBTI(labels);
+          const answers = Object.fromEntries(qs.map((q, i) => [q.id, labels[i]]));
 
           return {
-            type,
+            type: result.type,
             answers,
-            scores,
-            confidence,
-            dominantTrait: diffs[0],
-            details,
+            scores: result.scores,
+            confidence: result.confidence,
+            dominantTrait: result.dominantTrait,
+            details: result.details,
+            answerList: labels,
           };
         }
 
-        const el = (id) => document.getElementById(id);
         const $alertBar = el("alertBar");
         const $alertText = el("alertText");
         const $alertSubText = el("alertSubText");
@@ -1666,10 +1491,27 @@
           return { keywords, shoppingStyle, salesAdvice };
         }
 
+        function guestProfileFromMbtiQuizDesc(type) {
+          const mbti = window.mbtiQuiz;
+          if (!mbti || typeof mbti.getTypeDescription !== "function") return null;
+          const t = normalizeMbti(type);
+          if (!isValidMbti(t)) return null;
+          const d = mbti.getTypeDescription(t);
+          if (!d) return null;
+          const traits = Array.isArray(d.traits) ? d.traits : [];
+          return {
+            keywords: traits,
+            shoppingStyle: d.title
+              ? `${d.title}（${traits.length ? traits.join("、") : "详见接待策略"}）`
+              : traits.join("、"),
+            salesAdvice: d.approach || "",
+          };
+        }
+
         function getGuestProfile(type) {
           const t = normalizeMbti(type);
           if (!isValidMbti(t)) return null;
-          return MBTI_PROFILE_MAP.get(t) || buildGuestProfileFallback(t);
+          return guestProfileFromMbtiQuizDesc(t) || MBTI_PROFILE_MAP.get(t) || buildGuestProfileFallback(t);
         }
 
         function renderGuestProfile(type) {
@@ -2023,7 +1865,8 @@
             btn.classList.toggle("text-ink-100/90", !isActive);
           });
           document.querySelectorAll(".tabPanel").forEach((panel) => panel.classList.add("hidden"));
-          el(`tab-${tab}`).classList.remove("hidden");
+          const $tabPanel = el(`tab-${tab}`);
+          if ($tabPanel) $tabPanel.classList.remove("hidden");
           if (tab === "history") renderHistory();
 
           // 避免「话术匹配」页面出现双按钮：底部快捷入口只在结果页展示
@@ -2039,6 +1882,7 @@
 
         function initCaSelect() {
           const $sel = el("caTypeSelect");
+          if (!$sel) return;
           MBTI_TYPES.forEach((t) => {
             const opt = document.createElement("option");
             opt.value = t;
@@ -2050,10 +1894,14 @@
         function loadCa() {
           const saved = normalizeMbti(localStorage.getItem(STORAGE_KEYS.caType) || "");
           const ok = isValidMbti(saved);
-          el("caSavedRow").classList.toggle("hidden", !ok);
-          el("caInputRow").classList.toggle("hidden", ok);
-          el("caTypeSaved").textContent = ok ? saved : "";
-          if (!ok) el("caTypeSelect").value = "";
+          const $savedRow = el("caSavedRow");
+          const $inputRow = el("caInputRow");
+          const $saved = el("caTypeSaved");
+          const $sel = el("caTypeSelect");
+          if ($savedRow) $savedRow.classList.toggle("hidden", !ok);
+          if ($inputRow) $inputRow.classList.toggle("hidden", ok);
+          if ($saved) $saved.textContent = ok ? saved : "";
+          if (!ok && $sel) $sel.value = "";
         }
 
         function saveCa(type) {
@@ -2216,6 +2064,7 @@
 
         // Judge module
         function initJudge() {
+          if (!el("btnGenerateGuest")) return;
           el("btnGenerateGuest").addEventListener("click", async () => {
             hideAlert();
             const computed = computeMbtiFromQuestions();
@@ -2267,7 +2116,7 @@
 
           el("btnClearJudge").addEventListener("click", () => {
             hideAlert();
-            questions.forEach((q) => clearQuestion(q.id));
+            getJudgeQuestions().forEach((q) => clearQuestion(q.id));
             el("guestResultCard").classList.add("hidden");
             el("judgeFormCard").classList.remove("hidden");
           });
@@ -2385,6 +2234,7 @@
         }
 
         function initMatch() {
+          if (!el("btnSaveCa") || !el("btnGenerateScript")) return;
           el("btnSaveCa").addEventListener("click", () => {
             const v = el("caTypeSelect").value;
             saveCa(v);
@@ -2441,7 +2291,9 @@
         }
 
         function initHistory() {
-          el("btnClearHistory").addEventListener("click", () => {
+          const $btn = el("btnClearHistory");
+          if (!$btn) return;
+          $btn.addEventListener("click", () => {
             hideAlert();
             localStorage.removeItem(STORAGE_KEYS.history);
             renderHistory();
@@ -2450,11 +2302,13 @@
         }
 
         function initGlobal() {
-          el("btnResetAll").addEventListener("click", () => {
+          const $reset = el("btnResetAll");
+          if (!$reset) return;
+          $reset.addEventListener("click", () => {
             localStorage.removeItem(STORAGE_KEYS.caType);
             localStorage.removeItem(STORAGE_KEYS.lastGuestType);
             localStorage.removeItem(STORAGE_KEYS.history);
-            questions.forEach((q) => clearQuestion(q.id));
+            getJudgeQuestions().forEach((q) => clearQuestion(q.id));
             el("guestResultCard").classList.add("hidden");
             el("scriptCard").classList.add("hidden");
             el("followupBottomBar")?.classList.add("hidden");
@@ -2467,27 +2321,8 @@
         }
 
         function bootstrap() {
-          // Landing：首次打开先解释用途
-          try {
-            const seen = localStorage.getItem(UX_KEYS.landingSeen) === "1";
-            const $landing = el("landingOverlay");
-            const $app = el("appShell");
-            const $enter = el("btnEnterApp");
-            if ($landing && $app && $enter) {
-              if (!seen) {
-                $landing.classList.remove("hidden");
-                $app.classList.add("hidden");
-              }
-              $enter.addEventListener("click", () => {
-                localStorage.setItem(UX_KEYS.landingSeen, "1");
-                $landing.classList.add("hidden");
-                $app.classList.remove("hidden");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              });
-            }
-          } catch {
-            // ignore
-          }
+          initLanding();
+          applyLandingShellVisibility();
 
           initTabs();
           initCaSelect();
@@ -2511,9 +2346,6 @@
             el("btnGenerateScript")?.scrollIntoView({ behavior: "smooth", block: "center" });
           });
 
-          if (document.documentElement.getAttribute("data-no-tailwind") === "1") {
-            showAlert("已启用离线兜底样式", "当前网络可能拦截了 Tailwind CDN，不影响功能使用。");
-          }
         }
 
         bootstrap();

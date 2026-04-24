@@ -1,0 +1,10 @@
+{
+  "name": "mbti-outreach",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./docs/tailwind.input.css -o ./docs/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
